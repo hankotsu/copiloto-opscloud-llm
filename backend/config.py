@@ -20,7 +20,7 @@ class Config:
     # Datos
     db_path: Path = field(default_factory=lambda: RAIZ / os.getenv("DB_PATH", "data/ade_ops.sqlite"))
     # Límites de generación (rúbrica 02: "límites de longitud de respuesta configurados")
-    max_tokens: int = int(os.getenv("RESPUESTA_MAX_TOKENS", "600"))
+    max_tokens: int = int(os.getenv("RESPUESTA_MAX_TOKENS", "1500"))
     temperature: float = float(os.getenv("TEMPERATURE", "0.1"))
     max_iteraciones: int = int(os.getenv("MAX_ITERACIONES", "5"))
     max_reintentos_tool: int = int(os.getenv("MAX_REINTENTOS_TOOL", "2"))

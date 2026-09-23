@@ -10,6 +10,7 @@
 | L2 | **Coincidencia por azar (A4).** Un número pequeño inventado (ej. "3") puede coincidir con otro valor de los resultados, como el largo de una lista. | `test_A4_LIMITACION_...` | Exigir coherencia cifra–recurso (capa 1b) también para enteros pequeños |
 | L3 | **Afirmaciones cualitativas (A6).** "Todos los recursos tienen respaldo" no tiene cifras ni recursos: el verificador devuelve SIN_CIFRAS. | `test_A6_LIMITACION_...` | Capa 4 (autoverificación con el LLM) o reglas para afirmaciones universales ("todos", "ninguno") |
 | L4 | **Derivados de más de dos operandos.** La capa 3 reconstruye operaciones entre dos valores o la suma de una columna completa; una suma parcial de tres filas queda como no respaldada. | Diseño de `_derivable` | Pedir el agregado a una tool en lugar de calcularlo |
+| L6 | **Rangos derivados de la pregunta (FP-01).** "Del 1 al 31 de agosto de 2026" en una negativa honesta se marca como afirmación no respaldada. | Sección 3, FP-01 | Tratar como "del usuario" los límites del periodo preguntado (día 1 y último día del mes mencionado) |
 | L5 | **Nombres fuera de la convención.** Los recursos se detectan por patrón (`AREA-APP-AMB-TIPO-NNN`, `ade-…`, `sl-…`). Un nombre inventado con otro formato no se detecta como recurso. | Diseño de `RE_ENTIDAD` | Cruzar contra el catálogo completo de nombres de la BD |
 
 ## 2. Límites del grounding
@@ -20,6 +21,8 @@
 | G2 | **Falso «no sé»:** el modelo responde SIN_DATOS aunque la tool tenía el dato. | Métrica "Falso «no sé»" en `RESUMEN.md` |
 | G3 | Preguntas que requieren encadenar herramientas (categoría *cruzada*) fallan más. | Completar |
 | G4 | La variabilidad entre corridas no es cero, aun con temperature baja. | Desviación entre corridas en `RESUMEN.md` |
+| G5 | **El comportamiento sin grounding depende del modelo.** Con el mismo prompt, `qwen2.5:7b` se niega y `gemini-3.5-flash` inventa un monto con desglose coherente (ver `PLAN_OPCION_02.md` §7). Una prueba con un solo modelo no demuestra que el riesgo no exista. | `docs/evidencias/diagnostico_ollama.txt` vs `diagnostico_gemini.txt` |
+| G6 | **Los modelos con razonamiento consumen `max_tokens` antes de escribir.** Con 600 la respuesta de Gemini 3.5 se truncaba sin error visible. | Diagnóstico del 22/09 (100+23 tokens, respuesta cortada) |
 
 ## 3. Casos reales que engañaron al sistema
 
@@ -27,7 +30,7 @@
 
 | Caso | Proveedor / modo | Qué pasó | Qué se aprendió |
 |---|---|---|---|
-| | | | |
+| **FP-01** (23/09) · "¿Cuál fue el costo total del tenancy en agosto de 2026?" | gemini-3.5-flash · sin grounding | El modelo se negó con honestidad ("No tengo acceso directo…") y explicó cómo consultar Cost Analysis: "configura el rango **del 1 al 31 de agosto de 2026**". El verificador marcó **NO_VERIFICADA** (capa 2) por "1" y "31 de agosto de 2026". **Falso positivo:** no hay ninguna afirmación sobre los datos. | La capa 2 trata toda cifra o fecha como afirmación, incluso los límites del periodo que el usuario preguntó y los números de una instrucción. La corrección de `fechas_usuario` (fecha literal de la pregunta) no cubre fechas **derivadas** de la pregunta (primer y último día del mes). Candidato al ajuste documentado del Día 6, medido antes y después con la matriz de confusión. |
 
 ## 4. Fuera del alcance
 

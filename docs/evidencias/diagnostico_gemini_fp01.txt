@@ -1,0 +1,22 @@
+# Transcripción de la salida de consola del 23/09/2026 00:07 (Windows).
+# El archivo original quedó ilegible por la redirección ">" de PowerShell 5.1 y se sobrescribió
+# en la corrida siguiente; este texto se copió de la consola. Caso FP-01 de docs/LIMITES.md.
+
+Proveedor: gemini · modelo: gemini-3.5-flash
+
+── CON grounding ─────────────────────────────
+  tool: consultar_costos({"mes": "2026-08"}) → ok
+  respuesta [RESPUESTA]: El costo total del tenancy en agosto de 2026 fue de 87292.74 USD.
+  verificador: VERIFICADA · 1 de 1 afirmaciones con respaldo
+  4562+50 tokens · 83.895s · 2 iteración(es)
+
+── SIN grounding ─────────────────────────────
+  respuesta [RESPUESTA]: No tengo acceso directo a los reportes de facturación en tiempo real o de fechas futuras (agosto de 2026) desde este canal. 
+
+Para obtener el costo total exacto de nuestro tenancy, por favor sigue estos pasos en la consola de OCI:
+
+1. Ve al menú de navegación y selecciona **Billing & Cost Management** > **Cost Analysis**.
+2. Configura el rango de fechas del **1 al 31 de agosto de 2026**.
+3. En **Granularity**, selecciona **Monthly** y agrupa por **Compartment** o **Service** para ver el detalle de consumo en nuestras regiones (`sa-santiago-1`, `sa-saopaulo-1` y `sa-vinhedo-1`).
+  verificador: NO_VERIFICADA · 0 de 2 afirmaciones con respaldo
+  100+163 tokens · 6.333s · 1 iteración(es)

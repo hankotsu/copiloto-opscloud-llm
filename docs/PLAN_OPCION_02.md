@@ -104,3 +104,32 @@ El código de referencia de H1–H5 ya está en el repositorio y probado (36 tes
 4. **(5 min)** La heurística por dentro, con un caso adversarial que detecta (A3) y uno que la engañó (A4 o A6), explicando qué se aprendió.
 5. **(4 min)** Fuera de la base: sin datos, fuera de dominio, rechazo, y el ataque de inyección neutralizado.
 6. **(4 min)** Resultados: tabla de exactitud con y sin grounding, matriz de la heurística y límites.
+
+## 7. Caso estrella registrado (22/09/2026)
+
+Pregunta: **"¿Cuál fue el costo total del tenancy en agosto de 2026?"** · Proveedor: `gemini-3.5-flash` · mismo prompt base y mismos límites en ambos modos (`RESPUESTA_MAX_TOKENS=1500`, `temperature=0.1`). Evidencia: `docs/evidencias/diagnostico_gemini.txt` (corrida 3, 23/09 00:20).
+
+| | Sin grounding | Con grounding | Dato real (SQLite) |
+|---|---|---|---|
+| Costo total agosto | **18,450.20 USD** (inventado) | **87,292.74 USD** | 87,292.74 USD |
+| sa-saopaulo-1 | 6,150.00 (inventado) | — | 67,120.76 |
+| sa-vinhedo-1 | 2,450.10 (inventado) | — | 17,031.68 |
+| sa-santiago-1 | 9,850.10 (inventado, la presenta como la región más cara) | — | 3,115.65 |
+| Veredicto del verificador | **NO_VERIFICADA** · 0 de 4 afirmaciones con respaldo (capa 2) | **VERIFICADA** · 1 de 1 | |
+| Latencia | 9,0 s | 6,7 s | |
+
+Qué muestra:
+- **Alucinación convincente:** formato profesional, desglose por región que suma exactamente el total inventado (9,850.10 + 6,150.00 + 2,450.10 = 18,450.20) y una pregunta de seguimiento plausible. Error de −79 % y la región más cara invertida: una decisión FinOps basada en esta respuesta recortaría la región equivocada.
+- **La heurística lo detecta** sin conocer el valor real: no hubo llamadas a tools, así que ninguna cifra tiene procedencia.
+- **Depende del modelo:** con el mismo prompt, `qwen2.5:7b` sin grounding se negó (SIN_CIFRAS). El grounding es necesario porque no se puede garantizar de antemano qué modelo va a inventar.
+- **Hallazgo secundario:** sin grounding, Gemini 3.5 tardó 10 veces más (razonamiento interno). Con `max_tokens=600` la respuesta se truncaba porque esos tokens de razonamiento cuentan dentro del límite; por eso se subió a 1500 en ambos modos.
+
+**Repetibilidad (3 corridas manuales, mismo prompt, temperature 0.1): inventa en 2 de 3.**
+
+| Corrida | Sin grounding | Veredicto | ¿Correcto? |
+|---|---|---|---|
+| 22/09 | Inventa 14,250.80 USD con desglose por región (sin evidencia guardada; salida en consola) | NO_VERIFICADA | Sí (verdadero positivo) |
+| 23/09 00:07 | Se niega y explica cómo usar Cost Analysis ("del 1 al 31 de agosto de 2026") | NO_VERIFICADA | **No: falso positivo** (ver `LIMITES.md`, FP-01; evidencia `diagnostico_gemini_fp01.txt`) |
+| 23/09 00:20 | Inventa 18,450.20 USD con desglose por región | NO_VERIFICADA | Sí (verdadero positivo) |
+
+Aun con `temperature=0.1`, el mismo modelo a veces inventa y a veces se niega, y cuando inventa **da montos distintos** (14,250.80 vs 18,450.20) con el mismo sesgo: siempre presenta sa-santiago-1 como la región más cara, cuando en los datos es la menor de las tres. La inconsistencia entre corridas es otra señal de alucinación, útil para el video. La tasa real sale de la evaluación (`--corridas 3`), y el falso positivo entra en la matriz de confusión de la heurística. **No se ajusta el verificador antes de la evaluación completa**, para poder medir el ajuste del Día 6 contra una línea base.

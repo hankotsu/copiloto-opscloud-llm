@@ -358,7 +358,7 @@ gh release create v1.0 --title "Entrega final · Opción 02" --notes "Proyecto f
 | Gemini responde 429 | Límite por minuto de la capa gratuita | Sube `--pausa`; el adaptador reintenta con espera |
 | Gemini devuelve 404 | Modelo retirado para cuentas nuevas | Lista los modelos disponibles para tu key y usa uno `flash` estable (sin `preview`); hoy, `GEMINI_MODEL=gemini-3.5-flash` |
 | Gemini devuelve 503 | Saturación temporal del modelo | Reintenta en unos minutos; en la evaluación, sube `--pausa` |
-| Gemini devuelve texto vacío | Los tokens de razonamiento consumen `max_tokens` | `RESPUESTA_MAX_TOKENS=1500` y documenta el cambio |
+| Gemini devuelve texto vacío o cortado (p. ej. 100+23 tokens) | Los tokens de razonamiento de Gemini 3.x cuentan dentro de `max_tokens` | `RESPUESTA_MAX_TOKENS=1500` (valor por defecto desde el 22/09). Mismo límite en ambos modos: la comparación sigue siendo justa |
 | La interfaz muestra "simulado (sin key)" | Falta la key en `.env` o el servidor no se reinició | Revisa `.env` y reinicia `uvicorn` |
 | PowerShell no deja activar `.venv` | Política de ejecución | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | El puerto 8000 está ocupado | Otro proceso | `--port 8001` |

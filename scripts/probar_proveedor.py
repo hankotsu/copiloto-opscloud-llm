@@ -5,6 +5,10 @@ Diagnóstico rápido de un proveedor: ¿responde?, ¿llama a las tools?, ¿cuán
 Uso (desde la raíz del repo):
   python scripts/probar_proveedor.py --proveedor ollama
   python scripts/probar_proveedor.py --proveedor gemini --pregunta "¿Qué buckets tienen acceso público?"
+  python scripts/probar_proveedor.py --proveedor gemini --salida docs/evidencias/diagnostico_gemini.txt
+
+--salida escribe la misma salida en un archivo UTF-8. En Windows use esta opción en lugar de "> archivo":
+PowerShell 5.1 vuelve a codificar lo redirigido y los acentos quedan ilegibles (┬╖, ΓöÇ).
 """
 import argparse
 import json
@@ -20,7 +24,27 @@ from backend.proveedores import ErrorProveedor, crear_proveedor  # noqa: E402
 ap = argparse.ArgumentParser()
 ap.add_argument("--proveedor", default="ollama", choices=["ollama", "gemini", "openai", "simulado"])
 ap.add_argument("--pregunta", default="¿Cuál fue el costo total del tenancy en agosto de 2026?")
+ap.add_argument("--salida", help="archivo donde guardar también la salida (UTF-8), p. ej. docs/evidencias/diagnostico_gemini.txt")
 a = ap.parse_args()
+
+
+class _Tee:
+    """Escribe en la consola y en el archivo de evidencia a la vez."""
+    def __init__(self, *destinos):
+        self.destinos = destinos
+
+    def write(self, texto):
+        for d in self.destinos:
+            d.write(texto)
+
+    def flush(self):
+        for d in self.destinos:
+            d.flush()
+
+
+if a.salida:
+    os.makedirs(os.path.dirname(os.path.abspath(a.salida)), exist_ok=True)
+    sys.stdout = _Tee(sys.stdout, open(a.salida, "w", encoding="utf-8", newline="\n"))
 
 prov = crear_proveedor(a.proveedor)
 print(f"Proveedor: {prov.nombre} · modelo: {prov.modelo}{' · SIMULADO (falta la API key o MODO_SIMULADO=true)' if prov.modo_simulado and a.proveedor != 'simulado' else ''}")
