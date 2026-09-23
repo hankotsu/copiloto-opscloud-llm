@@ -23,6 +23,7 @@
 | G4 | La variabilidad entre corridas no es cero, aun con temperature baja. | Desviación entre corridas en `RESUMEN.md` |
 | G5 | **El comportamiento sin grounding depende del modelo.** Con el mismo prompt, `qwen2.5:7b` se niega y `gemini-3.5-flash` inventa un monto con desglose coherente (ver `PLAN_OPCION_02.md` §7). Una prueba con un solo modelo no demuestra que el riesgo no exista. | `docs/evidencias/diagnostico_ollama.txt` vs `diagnostico_gemini.txt` |
 | G6 | **Los modelos con razonamiento consumen `max_tokens` antes de escribir.** Con 600 la respuesta de Gemini 3.5 se truncaba sin error visible. | Diagnóstico del 22/09 (100+23 tokens, respuesta cortada) |
+| G7 | **SIN_DATOS decidido con el contexto, sin consultar la base.** Con grounding, el prompt incluye el periodo cargado (leído de la BD al iniciar). Ante un mes fuera de rango (G29, marzo de 2025), `qwen2.5:7b` respondió SIN_DATOS sin llamar a ninguna tool. Es correcto mientras el periodo inyectado lo sea, pero el "no sé" no se comprobó con una consulta. Además, el verificador acepta las fechas del periodo como respaldadas por ese contexto, y la interfaz muestra "herramientas: ninguna" junto a "respaldada", lo que puede confundir. | `docs/evidencias/dia2_interfaz.md` (G29) · `orquestador.py:69,113` · `prompts.py:12` |
 
 ## 3. Casos reales que engañaron al sistema
 
@@ -37,6 +38,8 @@
 - Los datos son sintéticos y estáticos; no hay conexión en vivo con OCI.
 - Las tarifas de costos son ilustrativas.
 - El puntaje automático (`eval/puntaje.py`) verifica que la respuesta **contenga** el valor esperado; una respuesta con datos correctos y además una afirmación falsa puede puntuar como correcta (el verificador la marcaría PARCIAL).
+- **Consistencia golden set ↔ tool (G18):** la tool `recursos_huerfanos` devuelve 310.25 y el golden set espera 310.24. Es una diferencia de redondeo al generar la clave (suma de valores redondeados frente a redondeo de la suma). La tolerancia de 0,5 % la absorbe, así que no altera el puntaje.
+- **Puntaje de SIN_DATOS en el modo sin grounding:** ese modo no recibe la regla que pide el prefijo "SIN_DATOS:", así que una negativa honesta (G29, marzo de 2025) se puntúa como incorrecta. Para ese modo, la lectura correcta es "no inventó" (veredicto SIN_CIFRAS), no "falló".
 
 ## 5. Límites operativos
 

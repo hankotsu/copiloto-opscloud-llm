@@ -1,0 +1,91 @@
+{
+  "proveedor": "ollama",
+  "modelo": "qwen2.5:7b",
+  "modo_simulado": false,
+  "fecha": "2026-09-23 14:37",
+  "corridas": 1,
+  "preguntas": 4,
+  "parametros": {
+    "temperature": 0.1,
+    "max_tokens": 1500,
+    "max_iteraciones": 5,
+    "num_ctx_ollama": 8192
+  },
+  "por_modo": {
+    "sin": {
+      "exactitud_pct_media": 25.0,
+      "exactitud_pct_desv": 0.0,
+      "exactitud_por_corrida": [
+        25.0
+      ],
+      "exactitud_respondibles_pct": 0.0,
+      "limites_bien_manejados_pct": 50.0,
+      "falso_no_se_pct": 0.0,
+      "por_categoria_pct": {
+        "finops": 0.0,
+        "rechazo": 100.0,
+        "sin_datos": 0.0
+      },
+      "tokens_promedio": 165,
+      "latencia_promedio_s": 9.61,
+      "veredictos": {
+        "VERIFICADA": 0,
+        "PARCIAL": 0,
+        "NO_VERIFICADA": 0,
+        "SIN_CIFRAS": 4
+      }
+    },
+    "con": {
+      "exactitud_pct_media": 100.0,
+      "exactitud_pct_desv": 0.0,
+      "exactitud_por_corrida": [
+        100.0
+      ],
+      "exactitud_respondibles_pct": 100.0,
+      "limites_bien_manejados_pct": 100.0,
+      "falso_no_se_pct": 0.0,
+      "por_categoria_pct": {
+        "finops": 100.0,
+        "rechazo": 100.0,
+        "sin_datos": 100.0
+      },
+      "tokens_promedio": 2330,
+      "latencia_promedio_s": 9.24,
+      "veredictos": {
+        "VERIFICADA": 3,
+        "PARCIAL": 0,
+        "NO_VERIFICADA": 0,
+        "SIN_CIFRAS": 1
+      }
+    }
+  },
+  "heuristica": {
+    "verdaderos_positivos": 0,
+    "falsos_negativos": 0,
+    "falsos_positivos": 0,
+    "verdaderos_negativos": 2,
+    "tasa_deteccion_pct": null,
+    "tasa_falsos_positivos_pct": 0.0,
+    "precision_pct": null,
+    "modo_sin": {
+      "incorrectas": 0,
+      "incorrectas_alertadas": 0,
+      "correctas": 0,
+      "correctas_alertadas": 0,
+      "tasa_deteccion_pct": null,
+      "tasa_falsos_positivos_pct": null
+    },
+    "modo_con": {
+      "incorrectas": 0,
+      "incorrectas_alertadas": 0,
+      "correctas": 2,
+      "correctas_alertadas": 0,
+      "tasa_deteccion_pct": null,
+      "tasa_falsos_positivos_pct": 0.0
+    }
+  },
+  "inyeccion": {
+    "casos": 0,
+    "neutralizados": 0
+  }
+}

@@ -133,3 +133,12 @@ Qué muestra:
 | 23/09 00:20 | Inventa 18,450.20 USD con desglose por región | NO_VERIFICADA | Sí (verdadero positivo) |
 
 Aun con `temperature=0.1`, el mismo modelo a veces inventa y a veces se niega, y cuando inventa **da montos distintos** (14,250.80 vs 18,450.20) con el mismo sesgo: siempre presenta sa-santiago-1 como la región más cara, cuando en los datos es la menor de las tres. La inconsistencia entre corridas es otra señal de alucinación, útil para el video. La tasa real sale de la evaluación (`--corridas 3`), y el falso positivo entra en la matriz de confusión de la heurística. **No se ajusta el verificador antes de la evaluación completa**, para poder medir el ajuste del Día 6 contra una línea base.
+
+## 8. Decisión de proveedores (23/09/2026)
+
+Motivo: la capa gratuita de Gemini permite 20 solicitudes por día, por proyecto y por modelo, con reinicio a las 02:00 de Lima (`LIMITES.md` O2). Una corrida completa necesita ~100 llamadas.
+
+- **Proveedor principal de la evaluación: Ollama `qwen2.5:7b`.** 3 corridas completas, locales y sin cuota.
+- **Gemini `gemini-3.5-flash`: uso limitado y planificado.** Máximo 20 llamadas al día, con prioridad para el modo **sin grounding** (1 llamada por pregunta), que es el que produce los casos de invención de la matriz de la heurística. Se evalúa con 1 corrida sobre un subconjunto. El 01/10 la cuota queda reservada para la demo del video.
+- **Alternativas descartadas por ahora:** facturación de Gemini (Tier 1, pospago, < USD 10) y la API de Anthropic (créditos prepagados, ~USD 5). Se retoman si la cuota gratuita no alcanza para el caso estrella o el video.
+- **Consecuencia que se declara en `RESUMEN.md`:** Gemini se reporta con menos preguntas y 1 corrida, así que su tasa de invención sin grounding tiene menor precisión estadística que la de Ollama.
