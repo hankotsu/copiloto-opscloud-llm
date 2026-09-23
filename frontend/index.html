@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copiloto de Operaciones Cloud</title>
+<style>
+  :root { --bg:#f5f7fa; --card:#fff; --tx:#1c2733; --mut:#5b6573; --ln:#d7dee6; --pri:#1f3a5f; --ac:#0f766e;
+          --ok:#15803d; --okb:#dcfce7; --warn:#b45309; --warnb:#fef3c7; --bad:#b91c1c; --badb:#fee2e2; --neu:#475569; --neub:#e2e8f0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f141a; --card:#18202a; --tx:#e6edf3; --mut:#9aa7b4; --ln:#2c3845; --pri:#9cc3ff; --ac:#5eead4;
+          --ok:#4ade80; --okb:#12351f; --warn:#fbbf24; --warnb:#3a2c0b; --bad:#f87171; --badb:#3d1515; --neu:#cbd5e1; --neub:#253041; } }
+  * { box-sizing:border-box } body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--tx) }
+  header { padding:18px 24px; border-bottom:1px solid var(--ln); background:var(--card) }
+  h1 { margin:0; font-size:20px; color:var(--pri) } header p { margin:4px 0 0; color:var(--mut); font-size:13px }
+  main { max-width:1200px; margin:0 auto; padding:20px 16px }
+  .panel { background:var(--card); border:1px solid var(--ln); border-radius:10px; padding:16px }
+  textarea { width:100%; min-height:70px; padding:10px; border:1px solid var(--ln); border-radius:8px; font:inherit; background:var(--bg); color:var(--tx); resize:vertical }
+  .fila { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px }
+  select, button { font:inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--ln); background:var(--bg); color:var(--tx) }
+  button.pri { background:var(--pri); color:var(--card); border-color:var(--pri); font-weight:600; cursor:pointer }
+  button.sec { background:var(--ac); color:var(--card); border-color:var(--ac); font-weight:600; cursor:pointer }
+  button:disabled { opacity:.5; cursor:wait } label { color:var(--mut); font-size:13px }
+  .res { display:grid; gap:16px; margin-top:16px } .res.dos { grid-template-columns:1fr 1fr } @media (max-width:800px){ .res.dos{grid-template-columns:1fr} }
+  .card { background:var(--card); border:1px solid var(--ln); border-radius:10px; padding:16px }
+  .cab { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px }
+  .modo { font-weight:700; color:var(--pri) } .badge { padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700 }
+  .VERIFICADA{background:var(--okb);color:var(--ok)} .PARCIAL{background:var(--warnb);color:var(--warn)} .NO_VERIFICADA{background:var(--badb);color:var(--bad)} .SIN_CIFRAS{background:var(--neub);color:var(--neu)}
+  .txt { white-space:pre-wrap; font-size:15px; padding:10px 12px; background:var(--bg); border-radius:8px }
+  .meta { color:var(--mut); font-size:12px; margin-top:8px } .tipo { font-size:12px; color:var(--mut); font-weight:600 }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px } td,th { text-align:left; padding:4px 6px; border-bottom:1px solid var(--ln) }
+  .e-respaldada,.e-derivada { color:var(--ok) } .e-no_respaldada,.e-atribucion_dudosa { color:var(--bad); font-weight:600 } .e-del_usuario { color:var(--mut) }
+  details { margin-top:10px } summary { cursor:pointer; color:var(--mut); font-size:13px } pre { font-size:12px; overflow:auto; max-height:260px; background:var(--bg); padding:8px; border-radius:6px }
+  .err { color:var(--bad); font-weight:600 }
+</style>
+</head>
+<body>
+<header>
+  <h1>Copiloto de Operaciones Cloud</h1>
+  <p>Asistente de IA · Las respuestas se generan con un modelo de lenguaje y se verifican contra los datos · Datos sintéticos de <em>Andes Demo Energía S.A.C.</em> (ficticia)</p>
+</header>
+<main>
+  <section class="panel">
+    <label for="ej">Preguntas de ejemplo (golden set)</label>
+    <select id="ej" style="width:100%;margin:4px 0 10px"><option value="">— elegir —</option></select>
+    <textarea id="q" maxlength="500" placeholder="Ej.: ¿Cuál fue el costo total de agosto de 2026?"></textarea>
+    <div class="fila">
+      <label>Proveedor <select id="prov"><option>ollama</option><option>gemini</option><option>openai</option><option>simulado</option></select></label>
+      <label><input type="checkbox" id="gr" checked> Con grounding</label>
+      <button class="pri" id="btn1">Preguntar</button>
+      <button class="sec" id="btn2">Comparar con y sin grounding</button>
+    </div>
+  </section>
+  <section id="res" class="res"></section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const el = (tag, attrs = {}, ...hijos) => { const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === "class" ? e.className = v : e.setAttribute(k, v);
+  for (const h of hijos) e.append(h); return e; };
+
+fetch("/api/ejemplos").then(r => r.json()).then(xs => xs.forEach(x =>
+  $("#ej").append(el("option", {value: x.pregunta}, `${x.id} · ${x.categoria} · ${x.pregunta}`))));
+$("#ej").onchange = e => { if (e.target.value) $("#q").value = e.target.value; };
+
+async function preguntar(grounding) {
+  const r = await fetch("/api/preguntar", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({pregunta: $("#q").value, grounding, proveedor: $("#prov").value})});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || (j.detail && JSON.stringify(j.detail)) || r.statusText);
+  return j;
+}
+
+function tarjeta(d) {
+  const v = d.verificacion.veredicto;
+  const c = el("div", {class: "card"},
+    el("div", {class: "cab"}, el("span", {class: "modo"}, d.grounding ? "CON grounding" : "SIN grounding"),
+       el("span", {class: "badge " + v}, v.replace("_", " "))),
+    el("div", {class: "tipo"}, d.tipo !== "RESPUESTA" ? d.tipo : ""),
+    el("div", {class: "txt"}, d.respuesta),
+    el("div", {class: "meta"}, `${d.verificacion.resumen} · ${d.proveedor}/${d.modelo}${d.modo_simulado ? " (simulado)" : ""} · ` +
+       `${d.tokens_entrada + d.tokens_salida} tokens · ${d.latencia_s}s · herramientas: ${d.herramientas_usadas.join(", ") || "ninguna"}`));
+  if (d.verificacion.afirmaciones.length) {
+    const t = el("table", {}, el("tr", {}, el("th", {}, "Afirmación"), el("th", {}, "Tipo"), el("th", {}, "Estado"), el("th", {}, "Detalle")));
+    d.verificacion.afirmaciones.forEach(a => t.append(el("tr", {}, el("td", {}, a.texto), el("td", {}, a.tipo),
+      el("td", {class: "e-" + a.estado}, a.estado.replace("_", " ")), el("td", {}, a.detalle || ""))));
+    c.append(el("details", {open: ""}, el("summary", {}, "Verificación de procedencia"), t));
+  }
+  if (d.pasos.length) c.append(el("details", {}, el("summary", {}, "Resultados de las herramientas (fuentes)"),
+    el("pre", {}, JSON.stringify(d.pasos, null, 2))));
+  return c;
+}
+
+async function ejecutar(modos) {
+  const res = $("#res"); res.className = "res" + (modos.length > 1 ? " dos" : ""); res.replaceChildren();
+  if ($("#q").value.trim().length < 3) return;
+  document.querySelectorAll("button").forEach(b => b.disabled = true);
+  try { for (const g of modos) res.append(tarjeta(await preguntar(g))); }
+  catch (e) { res.append(el("div", {class: "card err"}, "Error: " + e.message)); }
+  finally { document.querySelectorAll("button").forEach(b => b.disabled = false); }
+}
+$("#btn1").onclick = () => ejecutar([$("#gr").checked]);
+$("#btn2").onclick = () => ejecutar([false, true]);
+</script>
+</body>
+</html>

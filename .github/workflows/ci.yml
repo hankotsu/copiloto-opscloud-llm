@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  secretos:
+    name: Escaneo de secretos (historial completo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dataset:
+    name: Dataset sintético y golden set
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Guardia de confidencialidad
+        env:
+          PALABRAS_PROHIBIDAS: ${{ secrets.PALABRAS_PROHIBIDAS }}
+        run: python scripts/verificar_confidencialidad.py
+      - name: Tests del dataset
+        run: pytest -q

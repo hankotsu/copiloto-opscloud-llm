@@ -1,0 +1,53 @@
+# ── Secretos: NUNCA al repositorio ─────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.oci/
+oci_config*
+.confidencial.txt
+
+# ── Datos generados (se regeneran en ~2 s con data_gen/) ───────
+/data/
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Material de trabajo que no debe publicarse ─────────────────
+_privado/
+*.xlsx
+*.xls
+
+# ── Video: va a YouTube/Drive, no al repo (límite 100 MB) ──────
+*.mp4
+*.mov
+*.mkv
+*.avi
+
+# ── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+
+# ── Node / React ───────────────────────────────────────────────
+node_modules/
+frontend/dist/
+.vite/
+
+# ── IDE / SO ───────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
