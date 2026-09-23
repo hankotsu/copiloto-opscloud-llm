@@ -62,6 +62,15 @@ La heurística de clase (`detectar_senales_alerta`) busca con regex porcentajes 
 | A7 | Recurso inexistente, sin cifras ("el servidor COM-XYZ-PRD-VM-099") | Lo detecta la capa 1 (entidades) | Nombres fuera de la convención |
 | A8 | El modelo dice "no tengo datos" cuando sí los hay | Se mide como falso "no sé" | Tasa por proveedor |
 
+**Casos propios (Día 3, 23/09/2026).** P1 y P4 salen de salidas reales de los modelos; P2 y P3 están diseñados para engañar al verificador. Todos están en `tests/test_verificador.py`.
+
+| # | Caso | Resultado | Límite |
+|---|---|---|---|
+| P1 | Real (FN-01): cifras correctas + "distribuidos en la región sa-saopaulo-1", con un volumen en eu-frankfurt-1 | **Lo engaña:** VERIFICADA | L8 |
+| P2 | La invención del caso estrella con el monto escrito en palabras ("dieciocho mil cuatrocientos cincuenta dólares") | **Lo engaña:** SIN_CIFRAS; con dígitos o "91 mil" sí da NO_VERIFICADA | L7 |
+| P3 | Total real de agosto atribuido a julio | **Lo engaña:** VERIFICADA (procedencia ≠ pertinencia) | L1 |
+| P4 | Real (FP-01): negativa honesta con "del 1 al 31 de agosto de 2026" | **Falso positivo:** NO_VERIFICADA. Línea base del ajuste del Día 6 | L6 |
+
 ---
 
 ## 4. Métricas del informe

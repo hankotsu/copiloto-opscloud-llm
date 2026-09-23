@@ -102,3 +102,56 @@ def test_negativa_honesta_que_repite_la_pregunta_no_se_marca():
          "Puedes sumar los costos de las regiones sa-saopaulo-1, sa-vinhedo-1 y sa-santiago-1.")
     r = verificar(t, [], pregunta="¿Cuál fue el costo total del tenancy en agosto de 2026?")
     assert r.veredicto == "SIN_CIFRAS", r.a_dict()
+
+
+# ───────────── Casos propios (Día 3, 23/09/2026) · P1 y P4 salen de salidas reales de los modelos
+PERIODO = "Periodo de datos 2026-06-01 a 2026-08-31"
+HUERFANOS = {"tipo": "volúmenes sin instancia asociada", "cantidad": 11, "gb_totales": 7300, "mes_costo": "2026-08",
+             "costo_total_mes_usd": 310.25, "filas": [
+                 {"nombre": "vol-sin-nombre-06", "region": "sa-saopaulo-1", "tamano_gb": 2048, "costo_mes_usd": 87.04},
+                 {"nombre": "vol-migracion-01", "region": "sa-saopaulo-1", "tamano_gb": 1024, "costo_mes_usd": 43.52},
+                 {"nombre": "STF-RRH-DEV-VM-090 (Boot Volume)", "region": "sa-saopaulo-1", "tamano_gb": 100, "costo_mes_usd": 4.25},
+                 {"nombre": "prueba-fra-vm (Boot Volume)", "region": "eu-frankfurt-1", "tamano_gb": 100, "costo_mes_usd": 4.25}]}
+
+
+def test_P1_LIMITACION_region_generalizada_FN01():
+    # Caso real (qwen2.5:7b, G18 con grounding, 23/09): las cifras son correctas, pero "en la región sa-saopaulo-1"
+    # es falso: un volumen está en eu-frankfurt-1. El verificador no extrae regiones → VERIFICADA (falso negativo).
+    t = ("El costo total de los volúmenes no asociados a ninguna instancia en agosto de 2026 fue de $310.25. Estos volúmenes "
+         "están distribuidos en la región sa-saopaulo-1 y tienen tamaños que van desde 100 GB hasta 2048 GB.")
+    r = verificar(t, [HUERFANOS], "¿Cuánto costaron en agosto de 2026 los volúmenes no asociados a ninguna instancia?", PERIODO)
+    assert r.veredicto == "VERIFICADA", r.a_dict()
+    assert not any("saopaulo" in a.texto for a in r.afirmaciones)   # la región ni siquiera se evalúa
+
+
+def test_P2_LIMITACION_cifra_escrita_en_palabras():
+    # Diseñado: la misma invención del caso estrella, pero con el monto en palabras. Sin dígitos no hay cifra que
+    # extraer, así que ni la capa 2 (sin herramientas) la ve: SIN_CIFRAS en lugar de NO_VERIFICADA.
+    q = "¿Cuál fue el costo total del tenancy en agosto de 2026?"
+    assert verificar("El costo total de agosto de 2026 fue de 18,450.20 USD.", [], q).veredicto == "NO_VERIFICADA"
+    r = verificar("El costo total de agosto de 2026 fue de dieciocho mil cuatrocientos cincuenta dólares.", [], q)
+    assert r.veredicto == "SIN_CIFRAS", r.a_dict()
+    # Las abreviaturas con dígitos sí se detectan: el hueco es solo el número escrito en palabras.
+    for t in ("El costo total fue de 91 mil dólares.", "El costo total fue de USD 91k."):
+        assert verificar(t, []).veredicto == "NO_VERIFICADA", t
+
+
+def test_P3_LIMITACION_cifra_real_del_mes_equivocado():
+    # Diseñado (L1, procedencia ≠ pertinencia): la cifra existe en la herramienta, pero es de agosto y la
+    # respuesta la atribuye a julio. El mes sale de la pregunta ("del usuario") y la cifra está respaldada.
+    agosto = {"mes": "2026-08", "costo_total_usd": 87292.74}
+    r = verificar("El costo total del tenancy en julio de 2026 fue USD 87,292.74.", [agosto],
+                  "¿Cuál fue el costo total del tenancy en julio de 2026?", PERIODO)
+    assert r.veredicto == "VERIFICADA", r.a_dict()
+
+
+def test_P4_FALSO_POSITIVO_FP01_rango_derivado_de_la_pregunta():
+    # Caso real (gemini-3.5-flash sin grounding, 23/09 00:07): negativa honesta que indica cómo consultar el rango.
+    # Hoy queda NO_VERIFICADA por "1" y "31 de agosto de 2026" (L6). Es la línea base del ajuste del Día 6:
+    # si el ajuste funciona, este test debe cambiar a SIN_CIFRAS (medir antes y después).
+    t = ("No tengo acceso directo a los reportes de facturación en tiempo real o de fechas futuras (agosto de 2026) desde "
+         "este canal. Para obtener el costo total exacto, en la consola de OCI selecciona Cost Analysis y configura el "
+         "rango de fechas del **1 al 31 de agosto de 2026**.")
+    r = verificar(t, [], "¿Cuál fue el costo total del tenancy en agosto de 2026?")
+    assert r.veredicto == "NO_VERIFICADA", r.a_dict()
+    assert {a.texto for a in r.afirmaciones if a.estado == "no_respaldada"} == {"1", "31 de agosto de 2026"}
