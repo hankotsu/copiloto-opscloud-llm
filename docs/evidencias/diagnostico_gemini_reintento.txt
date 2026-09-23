@@ -1,0 +1,4 @@
+Proveedor: gemini · modelo: gemini-3.5-flash
+
+── CON grounding ─────────────────────────────
+ERROR: gemini respondió 503
