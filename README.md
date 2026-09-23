@@ -1,6 +1,6 @@
 # Copiloto de Operaciones Cloud con cifras verificadas
 
-[![CI](https://github.com/<TU_USUARIO>/copiloto-opscloud-llm/actions/workflows/ci.yml/badge.svg)](https://github.com/<TU_USUARIO>/copiloto-opscloud-llm/actions/workflows/ci.yml)
+[![CI](https://github.com/hankotsu/copiloto-opscloud-llm/actions/workflows/ci.yml/badge.svg)](https://github.com/hankotsu/copiloto-opscloud-llm/actions/workflows/ci.yml)
 
 Asistente de IA que responde en lenguaje natural sobre el **inventario, los respaldos, la red y los costos** de una nube OCI, **sin inventar cifras**. El LLM decide qué consultar y redacta la respuesta, pero no calcula: las cifras salen de tools de solo lectura (**grounding por tool calling**), y un **verificador de procedencia** propio comprueba que cada número, fecha y recurso de la respuesta provenga de esas tools.
 
@@ -43,7 +43,7 @@ flowchart LR
 Requisitos: Python 3.12, Git y, para usar un LLM real, Ollama con un modelo con soporte de *tools* o una API key de Gemini.
 
 ```bash
-git clone https://github.com/<TU_USUARIO>/copiloto-opscloud-llm.git
+git clone https://github.com/hankotsu/copiloto-opscloud-llm.git
 cd copiloto-opscloud-llm
 python -m venv .venv
 source .venv/bin/activate                      # Windows: .venv\Scripts\activate
