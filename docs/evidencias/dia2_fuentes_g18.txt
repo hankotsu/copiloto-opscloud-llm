@@ -1,0 +1,135 @@
+Copiloto de Operaciones Cloud
+Asistente de IA · Las respuestas se generan con un modelo de lenguaje y se verifican contra los datos · Datos sintéticos de Andes Demo Energía S.A.C. (ficticia)
+
+Preguntas de ejemplo (golden set) 
+G18 · finops · ¿Cuánto costaron en agosto de 2026 los volúmenes no asociados a ninguna instancia (sin contar sus backups)?
+ 
+¿Cuánto costaron en agosto de 2026 los volúmenes no asociados a ninguna instancia (sin contar sus backups)?
+Proveedor 
+ollama
+ Con grounding
+Preguntar
+Comparar con y sin grounding
+CON grounding
+VERIFICADA
+El costo total de los volúmenes no asociados a ninguna instancia en agosto de 2026 fue de $310.25. Estos volúmenes están distribuidos en la región sa-saopaulo-1 y tienen tamaños que van desde 100 GB hasta 2048 GB.
+3 de 3 afirmaciones con respaldo · ollama/qwen2.5:7b · 4635 tokens · 27.615s · herramientas: recursos_huerfanos
+Verificación de procedencia
+Afirmación	Tipo	Estado	Detalle
+agosto de 2026	fecha	del usuario	
+$310.25	cifra	respaldada	
+100	cifra	respaldada	
+2048	cifra	respaldada	
+Resultados de las herramientas (fuentes)
+[
+  {
+    "tool": "recursos_huerfanos",
+    "argumentos": {
+      "mes": "2026-08",
+      "tipo": "volumenes"
+    },
+    "ok": true,
+    "resultado": {
+      "tipo": "volúmenes sin instancia asociada",
+      "cantidad": 11,
+      "gb_totales": 7300,
+      "mes_costo": "2026-08",
+      "costo_total_mes_usd": 310.25,
+      "nota": "costo de almacenamiento y rendimiento, sin incluir backups",
+      "filas": [
+        {
+          "nombre": "vol-sin-nombre-06",
+          "tipo": "BLOCK",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 2048,
+          "creado": "2025-05-03",
+          "costo_mes_usd": 87.04
+        },
+        {
+          "nombre": "vol-migracion-01",
+          "tipo": "BLOCK",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 1024,
+          "creado": "2025-06-02",
+          "costo_mes_usd": 43.52
+        },
+        {
+          "nombre": "vol-migracion-02",
+          "tipo": "BLOCK",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 1024,
+          "creado": "2025-08-27",
+          "costo_mes_usd": 43.52
+        },
+        {
+          "nombre": "COM-FAC-PRD-DATA-old",
+          "tipo": "BLOCK",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 1024,
+          "creado": "2025-04-28",
+          "costo_mes_usd": 43.52
+        },
+        {
+          "nombre": "TEC-GIS-QA-DATA-respaldo",
+          "tipo": "BLOCK",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 1024,
+          "creado": "2025-07-24",
+          "costo_mes_usd": 43.52
+        },
+        {
+          "nombre": "STF-ERP-PRD-DATA-temp",
+          "tipo": "BLOCK",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 500,
+          "creado": "2025-09-24",
+          "costo_mes_usd": 21.25
+        },
+        {
+          "nombre": "COM-CRM-DEV-VM-091 (Boot Volume)",
+          "tipo": "BOOT",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 256,
+          "creado": "2025-05-26",
+          "costo_mes_usd": 10.88
+        },
+        {
+          "nombre": "STF-RRH-DEV-VM-090 (Boot Volume)",
+          "tipo": "BOOT",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 100,
+          "creado": "2025-12-26",
+          "costo_mes_usd": 4.25
+        },
+        {
+          "nombre": "TEC-GIS-DEV-VM-092 (Boot Volume)",
+          "tipo": "BOOT",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 100,
+          "creado": "2025-10-21",
+          "costo_mes_usd": 4.25
+        },
+        {
+          "nombre": "TEC-GIS-DEV-VM-093 (Boot Volume)",
+          "tipo": "BOOT",
+          "region": "sa-saopaulo-1",
+          "tamano_gb": 100,
+          "creado": "2025-10-05",
+          "costo_mes_usd": 4.25
+        },
+        {
+          "nombre": "prueba-fra-vm (Boot Volume)",
+          "tipo": "BOOT",
+          "region": "eu-frankfurt-1",
+          "tamano_gb": 100,
+          "creado": "2025-05-14",
+          "costo_mes_usd": 4.25
+        }
+      ],
+      "filas_devueltas": 11,
+      "filas_totales": 11,
+      "truncado": false
+    },
+    "error": ""
+  }
+]

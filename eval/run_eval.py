@@ -12,6 +12,11 @@ Genera en eval/resultados/<fecha>_<proveedor>_<modelo>/ :
   resumen.json      · métricas agregadas
   RESUMEN.md        · tablas para el informe (exactitud, matriz de la heurística, límites, inyección)
   PARES.md          · las 32 preguntas con la respuesta SIN y CON grounding (entregable de la opción 02)
+
+Errores del proveedor (429, 503, sin conexión): la consulta queda registrada con tipo y veredicto
+ERROR y se EXCLUYE de todas las métricas. Un error no es una negativa (SIN_CIFRAS) ni una respuesta
+incorrecta. Tras --max-errores-seguidos errores consecutivos (3 por defecto) la corrida se detiene,
+para no gastar cuota contra un servicio caído o sin cuota.
 """
 from __future__ import annotations
 
@@ -38,6 +43,24 @@ from puntaje import RESPONDIBLES, evaluar  # noqa: E402
 ALERTA = ("PARCIAL", "NO_VERIFICADA")
 
 
+class AbortarCorrida(Exception):
+    """Se alcanzó el máximo de errores seguidos del proveedor (p. ej. cuota diaria agotada)."""
+
+
+def fila_error(corrida, id_, categoria, tipo_esperado, grounding, error) -> dict:
+    """Registro de una consulta que no obtuvo respuesta del proveedor: se excluye de las métricas."""
+    return {"corrida": corrida, "id": id_, "categoria": categoria, "tipo_esperado": tipo_esperado,
+            "grounding": grounding, "correcta": False, "motivo": f"error del proveedor: {error}", "tipo": "ERROR",
+            "veredicto": "ERROR", "respuesta": "", "herramientas": [], "tokens": 0, "latencia_s": 0,
+            "verificacion": {"veredicto": "ERROR", "afirmaciones": []}, "canario_filtrado": False}
+
+
+def _control_errores(seguidos: int, maximo: int) -> None:
+    if maximo and seguidos >= maximo:
+        raise AbortarCorrida(f"Corrida detenida tras {seguidos} errores seguidos del proveedor. Revise la cuota o la "
+                             f"disponibilidad (python scripts/diagnostico_http_gemini.py) y repita las preguntas pendientes.")
+
+
 def pct(a, b):
     return round(100 * a / b, 1) if b else None
 
@@ -61,72 +84,103 @@ def correr(args):
     total = len(golden) * len(modos) * args.corridas + len(inyecciones) * args.corridas
     print(f"Proveedor {prov.nombre}/{prov.modelo}{' (SIMULADO)' if prov.modo_simulado else ''} · {total} consultas → {salida}")
 
-    filas, n = [], 0
+    filas, n, seguidos, abortada = [], 0, 0, ""
+    maximo = getattr(args, "max_errores_seguidos", 3)
+
+    def registrar(f, fila):
+        filas.append(fila)
+        f.write(json.dumps(fila, ensure_ascii=False) + "\n")
+        f.flush()
+
     with open(os.path.join(salida, "respuestas.jsonl"), "w", encoding="utf-8") as f:
-        for corrida in range(1, args.corridas + 1):
-            for p in golden:
-                for g in modos:
+        try:
+            for corrida in range(1, args.corridas + 1):
+                for p in golden:
+                    for g in modos:
+                        n += 1
+                        etiqueta_q = f"[{n}/{total}] c{corrida} {p['id']} {'CON' if g else 'SIN'}"
+                        try:
+                            d = orq.responder(p["pregunta"], g).a_dict()
+                        except ErrorProveedor as e:
+                            registrar(f, fila_error(corrida, p["id"], p["categoria"], p["tipo"], g, e))
+                            print(f"  {etiqueta_q} → ⚠ ERROR del proveedor ({e}) · excluida de las métricas")
+                            seguidos += 1
+                            _control_errores(seguidos, maximo)
+                            time.sleep(args.pausa)
+                            continue
+                        seguidos = 0
+                        ok, motivo = evaluar(p, d)
+                        registrar(f, {"corrida": corrida, "id": p["id"], "categoria": p["categoria"], "tipo_esperado": p["tipo"],
+                                      "grounding": g, "correcta": ok, "motivo": motivo, "tipo": d["tipo"],
+                                      "veredicto": d["verificacion"]["veredicto"], "respuesta": d["respuesta"],
+                                      "herramientas": d["herramientas_usadas"], "tokens": d["tokens_entrada"] + d["tokens_salida"],
+                                      "latencia_s": d["latencia_s"], "verificacion": d["verificacion"]})
+                        print(f"  {etiqueta_q} → {'✔' if ok else '✘'} {d['verificacion']['veredicto']}")
+                        time.sleep(args.pausa)
+                for c in inyecciones:
                     n += 1
                     try:
-                        d = orq.responder(p["pregunta"], g).a_dict()
+                        d = orq.responder(c["pregunta"], True).a_dict()
                     except ErrorProveedor as e:
-                        print(f"  ERROR proveedor en {p['id']}: {e}")
-                        d = {"respuesta": "", "tipo": "ERROR", "verificacion": {"veredicto": "SIN_CIFRAS", "afirmaciones": []},
-                             "tokens_entrada": 0, "tokens_salida": 0, "latencia_s": 0, "herramientas_usadas": [], "pasos": []}
-                    ok, motivo = evaluar(p, d) if d["tipo"] != "ERROR" else (False, "error del proveedor")
-                    fila = {"corrida": corrida, "id": p["id"], "categoria": p["categoria"], "tipo_esperado": p["tipo"],
-                            "grounding": g, "correcta": ok, "motivo": motivo, "tipo": d["tipo"],
-                            "veredicto": d["verificacion"]["veredicto"], "respuesta": d["respuesta"],
-                            "herramientas": d["herramientas_usadas"], "tokens": d["tokens_entrada"] + d["tokens_salida"],
-                            "latencia_s": d["latencia_s"], "verificacion": d["verificacion"]}
-                    filas.append(fila)
-                    f.write(json.dumps(fila, ensure_ascii=False) + "\n")
-                    print(f"  [{n}/{total}] c{corrida} {p['id']} {'CON' if g else 'SIN'} → {'✔' if ok else '✘'} {fila['veredicto']}")
+                        registrar(f, fila_error(corrida, c["id"], "inyeccion", "inyeccion", True, e))
+                        print(f"  [{n}/{total}] c{corrida} {c['id']} inyección → ⚠ ERROR del proveedor ({e}) · excluida")
+                        seguidos += 1
+                        _control_errores(seguidos, maximo)
+                        time.sleep(args.pausa)
+                        continue
+                    seguidos = 0
+                    prohibidas = [x.replace("<CANARIO>", CONFIG.canario) for x in c["no_debe_aparecer"]]
+                    fallo = [x for x in prohibidas if x.lower() in d["respuesta"].lower()]
+                    registrar(f, {"corrida": corrida, "id": c["id"], "categoria": "inyeccion", "grounding": True, "correcta": not fallo,
+                                  "motivo": "neutralizada" if not fallo else f"apareció: {fallo}", "tipo": d["tipo"],
+                                  "veredicto": d["verificacion"]["veredicto"], "respuesta": d["respuesta"],
+                                  "herramientas": d["herramientas_usadas"], "tokens": d["tokens_entrada"] + d["tokens_salida"],
+                                  "latencia_s": d["latencia_s"], "canario_filtrado": d["canario_filtrado"]})
+                    print(f"  [{n}/{total}] c{corrida} {c['id']} inyección → {'neutralizada' if not fallo else 'FALLÓ'}")
                     time.sleep(args.pausa)
-            for c in inyecciones:
-                n += 1
-                try:
-                    d = orq.responder(c["pregunta"], True).a_dict()
-                except ErrorProveedor as e:
-                    print(f"  ERROR proveedor en {c['id']}: {e}")
-                    continue
-                prohibidas = [x.replace("<CANARIO>", CONFIG.canario) for x in c["no_debe_aparecer"]]
-                fallo = [x for x in prohibidas if x.lower() in d["respuesta"].lower()]
-                fila = {"corrida": corrida, "id": c["id"], "categoria": "inyeccion", "grounding": True, "correcta": not fallo,
-                        "motivo": "neutralizada" if not fallo else f"apareció: {fallo}", "tipo": d["tipo"],
-                        "veredicto": d["verificacion"]["veredicto"], "respuesta": d["respuesta"],
-                        "herramientas": d["herramientas_usadas"], "tokens": d["tokens_entrada"] + d["tokens_salida"],
-                        "latencia_s": d["latencia_s"], "canario_filtrado": d["canario_filtrado"]}
-                filas.append(fila)
-                f.write(json.dumps(fila, ensure_ascii=False) + "\n")
-                print(f"  [{n}/{total}] c{corrida} {c['id']} inyección → {'neutralizada' if not fallo else 'FALLÓ'}")
-                time.sleep(args.pausa)
-    resumen = resumir(filas, golden, prov, args)
+        except AbortarCorrida as e:
+            abortada = str(e)
+            print(f"\n⛔ {abortada}")
+    resumen = resumir(filas, golden, prov, args, abortada)
     with open(os.path.join(salida, "resumen.json"), "w", encoding="utf-8") as f:
         json.dump(resumen, f, ensure_ascii=False, indent=2)
     escribir_md(salida, resumen, filas, golden)
     print(f"\nListo. Revise {os.path.relpath(salida, RAIZ)}/RESUMEN.md y PARES.md")
 
 
-def resumir(filas, golden, prov, args):
-    g = [f for f in filas if f["categoria"] != "inyeccion"]
+def _errores(xs) -> int:
+    return sum(1 for x in xs if x["tipo"] == "ERROR")
+
+
+def resumir(filas, golden, prov, args, abortada: str = ""):
+    todas = [f for f in filas if f["categoria"] != "inyeccion"]
+    g = [f for f in todas if f["tipo"] != "ERROR"]          # solo respuestas válidas entran en las métricas
+    iny_todas = [x for x in filas if x["categoria"] == "inyeccion"]
     res = {"proveedor": prov.nombre, "modelo": prov.modelo, "modo_simulado": prov.modo_simulado,
            "fecha": f"{dt.datetime.now():%Y-%m-%d %H:%M}", "corridas": args.corridas, "preguntas": len(golden),
            "parametros": {"temperature": CONFIG.temperature, "max_tokens": CONFIG.max_tokens,
                           "max_iteraciones": CONFIG.max_iteraciones, "num_ctx_ollama": CONFIG.ollama_num_ctx},
-           "por_modo": {}}
+           "por_modo": {}, "abortada": abortada,
+           "errores_proveedor": {"total": _errores(filas), "sin": _errores(x for x in todas if not x["grounding"]),
+                                 "con": _errores(x for x in todas if x["grounding"]), "inyeccion": _errores(iny_todas)}}
     for modo in (False, True):
+        clave = "con" if modo else "sin"
         fm = [f for f in g if f["grounding"] == modo]
+        n_err = res["errores_proveedor"][clave]
         if not fm:
+            if n_err:
+                res["por_modo"][clave] = {"consultas_validas": 0, "errores_proveedor": n_err}
             continue
-        por_corrida = [pct(sum(x["correcta"] for x in fm if x["corrida"] == c), sum(1 for x in fm if x["corrida"] == c))
-                       for c in range(1, args.corridas + 1)]
+        por_corrida = [v for v in (pct(sum(x["correcta"] for x in fm if x["corrida"] == c), sum(1 for x in fm if x["corrida"] == c))
+                                   for c in range(1, args.corridas + 1)) if v is not None]
         resp = [x for x in fm if x["tipo_esperado"] in RESPONDIBLES]
         lim = [x for x in fm if x["tipo_esperado"] not in RESPONDIBLES]
         por_cat = defaultdict(list)
         for x in fm:
             por_cat[x["categoria"]].append(x["correcta"])
-        res["por_modo"]["con" if modo else "sin"] = {
+        res["por_modo"][clave] = {
+            "consultas_validas": len(fm),
+            "errores_proveedor": n_err,
             "exactitud_pct_media": round(st.mean(por_corrida), 1),
             "exactitud_pct_desv": round(st.pstdev(por_corrida), 1) if len(por_corrida) > 1 else 0.0,
             "exactitud_por_corrida": por_corrida,
@@ -156,8 +210,9 @@ def resumir(filas, golden, prov, args):
         res["heuristica"][f"modo_{modo}"] = {"incorrectas": b, "incorrectas_alertadas": a, "correctas": d,
                                              "correctas_alertadas": c, "tasa_deteccion_pct": pct(a, b),
                                              "tasa_falsos_positivos_pct": pct(c, d)}
-    iny = [x for x in filas if x["categoria"] == "inyeccion"]
-    res["inyeccion"] = {"casos": len(iny), "neutralizados": sum(x["correcta"] for x in iny)}
+    iny = [x for x in iny_todas if x["tipo"] != "ERROR"]
+    res["inyeccion"] = {"casos": len(iny), "neutralizados": sum(x["correcta"] for x in iny),
+                        "errores_proveedor": res["errores_proveedor"]["inyeccion"]}
     return res
 
 
@@ -170,10 +225,18 @@ def escribir_md(salida, r, filas, golden):
     L = [f"# Resultados de evaluación · {r['proveedor']}/{r['modelo']}", "",
          f"Fecha {r['fecha']} · {r['preguntas']} preguntas · {r['corridas']} corrida(s) · parámetros fijos: "
          f"temperature={r['parametros']['temperature']}, max_tokens={r['parametros']['max_tokens']}, "
-         f"max_iteraciones={r['parametros']['max_iteraciones']}" + (" · **MODO SIMULADO**" if r["modo_simulado"] else ""), "",
-         "## 1. Efecto del grounding", "", "| Métrica | Sin grounding | Con grounding |", "|---|---|---|"]
+         f"max_iteraciones={r['parametros']['max_iteraciones']}" + (" · **MODO SIMULADO**" if r["modo_simulado"] else ""), ""]
+    e = r.get("errores_proveedor", {})
+    if e.get("total"):
+        L += [f"> ⚠ **{e['total']} consultas excluidas por error del proveedor** (sin grounding: {e['sin']}, con grounding: "
+              f"{e['con']}, inyección: {e['inyeccion']}). Las métricas se calculan solo sobre respuestas válidas: un error "
+              "no cuenta como negativa (SIN_CIFRAS) ni como respuesta incorrecta.", ""]
+    if r.get("abortada"):
+        L += [f"> ⛔ {r['abortada']}", ""]
+    L += ["## 1. Efecto del grounding", "", "| Métrica | Sin grounding | Con grounding |", "|---|---|---|"]
     s, c = r["por_modo"].get("sin", {}), r["por_modo"].get("con", {})
-    for k, et in (("exactitud_pct_media", "Exactitud total (%)"), ("exactitud_pct_desv", "Desviación entre corridas (pp)"),
+    for k, et in (("consultas_validas", "Consultas válidas"), ("errores_proveedor", "Consultas con error del proveedor (excluidas)"),
+                  ("exactitud_pct_media", "Exactitud total (%)"), ("exactitud_pct_desv", "Desviación entre corridas (pp)"),
                   ("exactitud_respondibles_pct", "Exactitud en preguntas con respuesta (%)"),
                   ("limites_bien_manejados_pct", "Límites bien manejados: sin datos, fuera de dominio, rechazo (%)"),
                   ("falso_no_se_pct", "Falso «no sé» (%)"), ("tokens_promedio", "Tokens promedio por consulta"),
@@ -223,7 +286,9 @@ def escribir_md(salida, r, filas, golden):
               f"**Respuesta esperada:** `{json.dumps(esp, ensure_ascii=False)[:300]}`", "",
               "| Modo | Respuesta | Correcta | Verificador |", "|---|---|---|---|"]
         for et, x in (("Sin grounding", sx), ("Con grounding", cx)):
-            if x:
+            if x and x["tipo"] == "ERROR":
+                P.append(f"| {et} | _(sin respuesta: {_corto(x['motivo'], 120).replace('|', '/')})_ | — excluida de las métricas | ERROR |")
+            elif x:
                 P.append(f"| {et} | {_corto(x['respuesta']).replace('|', '/')} | {'✔' if x['correcta'] else '✘'} {x['motivo']} | "
                          f"{x['veredicto']} |")
         P.append("")
@@ -239,4 +304,6 @@ if __name__ == "__main__":
     ap.add_argument("--ids", default="", help="Subconjunto, ej. G13,G17,I01")
     ap.add_argument("--limite", type=int, default=0, help="Solo las primeras N preguntas")
     ap.add_argument("--pausa", type=float, default=0.0, help="Segundos entre consultas (límites de la API)")
+    ap.add_argument("--max-errores-seguidos", type=int, default=3,
+                    help="Detiene la corrida tras N errores seguidos del proveedor (0 = nunca)")
     correr(ap.parse_args())

@@ -99,6 +99,10 @@ class ProveedorOpenAICompat:
         for intento in range(3):  # backoff simple ante 429 / 5xx
             try:
                 r = self.cliente.post("/chat/completions", json=payload)
+                if r.status_code == 429 and "PerDay" in r.text:
+                    # Cuota diaria agotada: reintentar no sirve y solo alarga la espera.
+                    raise ErrorProveedor(f"{self.nombre} respondió 429: cuota diaria agotada "
+                                         "(se reinicia a medianoche del Pacífico)")
                 if r.status_code in (429, 500, 502, 503) and intento < 2:
                     time.sleep(2 ** (intento + 1))
                     continue
