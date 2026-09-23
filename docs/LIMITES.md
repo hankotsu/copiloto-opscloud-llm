@@ -37,3 +37,10 @@
 - Los datos son sintéticos y estáticos; no hay conexión en vivo con OCI.
 - Las tarifas de costos son ilustrativas.
 - El puntaje automático (`eval/puntaje.py`) verifica que la respuesta **contenga** el valor esperado; una respuesta con datos correctos y además una afirmación falsa puede puntuar como correcta (el verificador la marcaría PARCIAL).
+
+## 5. Límites operativos
+
+| # | Límite | Evidencia | Mitigación |
+|---|---|---|---|
+| O1 | **Disponibilidad del proveedor en la nube.** El 23/09 (12:50–13:15) `gemini-3.5-flash` respondió 503 `UNAVAILABLE` (servicio saturado) en los 3 intentos de cada consulta. El sistema devolvió un error explícito y **no generó ninguna respuesta**: degrada de forma segura, pero queda sin servicio. | `docs/evidencias/dia2_gemini_503.png` · log de uvicorn (`error_proveedor`) · `docs/evidencias/diagnostico_gemini_reintento.txt` | Proveedor local (Ollama) como respaldo; `--pausa` en la evaluación; Ollama precalentado como plan B del video |
+| O2 | **Cuota diaria de la capa gratuita.** A las 13:54 la API devolvió 429 `RESOURCE_EXHAUSTED`: 20 solicitudes por día, por proyecto y por modelo (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`), con reinicio a medianoche del Pacífico (02:00 en Lima). `GET /models` respondió 200 y listó el modelo, así que la key y la configuración estaban bien. Los diagnósticos y reintentos del día agotaron la cuota; todo indica que los intentos fallidos por 503 también cuentan. Una corrida completa necesita ~100 llamadas, así que 3 corridas son inviables en la capa gratuita. | `docs/evidencias/diagnostico_http_gemini.txt` | Tier 1 (facturación) o Ollama como proveedor principal; no reintentar ante un 429 diario (el `retryDelay` de 58 s no aplica a la cuota por día) |

@@ -1,6 +1,6 @@
 # Día 2 · Validación de la interfaz con y sin grounding
 
-Fecha: ____/09/2026 · Servidor: `uvicorn backend.main:app --host 127.0.0.1 --port 8000`
+Fecha: 23/09/2026 · Servidor: `uvicorn backend.main:app --host 127.0.0.1 --port 8000`
 Configuración: `RESPUESTA_MAX_TOKENS=1500` · `TEMPERATURE=0.1` · mismo prompt base en ambos modos.
 
 ## 1a. Cinco preguntas en ambos modos · ollama · qwen2.5:7b (23/09 ≈13:20, `ollama ps` 55 %/45 % CPU/GPU)
@@ -61,7 +61,8 @@ Registrar aquí, sin corregir nada (el ajuste del verificador es el Día 6):
 - **G18: $310.25 marcado como "respaldada" frente a 310.24 esperado.** Pendiente abrir "fuentes": si la tool devuelve 310.24, la tolerancia de redondeo de la capa 1 acepta un valor expresado al centavo que no coincide al centavo (el verificador no detecta errores de ±0,01); si devuelve filas por recurso y el modelo sumó, el LLM calculó (contra el diseño) y la capa 3 lo aceptó por tolerancia; si devuelve 310.25, la discrepancia es entre el golden set y la tool (redondeo de la suma). Origen: ______
 - **Atributos no verificados:** en G17 el shape (BM.GPU.A10.4) y la región, y en G10 las regiones, no aparecen en la tabla de verificación; el verificador no extrae shapes ni regiones como afirmaciones. Confirmar en "fuentes" que coinciden: ______ (si no coinciden, es un caso real de L3/L5).
 - **Tipificación:** en G10 las versiones 19.27.0.0 y 19.31.0.0 se clasifican como tipo "recurso". Quedan respaldadas, así que no afecta el veredicto; es un detalle de etiquetado.
-- **Contexto del prompt base:** sin grounding, en G13 el modelo nombra las tres regiones reales del tenancy. Comprobar si vienen del prompt base (compartido por ambos modos): ______
+- **Contexto del prompt base:** sin grounding, en G13 el modelo nombra las tres regiones reales del tenancy. Vienen del prompt base (`backend/prompts.py:6`), compartido por ambos modos: no son invención ni adivinanza, y la comparación sigue siendo justa.
+- **Metadatos del golden set:** `tool_esperada` usa nombres que no existen en `backend/tools.py` (`costo_total` y `volumenes_huerfanos` frente a `consultar_costos` y `recursos_huerfanos`). `eval/*.py` no usa ese campo, así que no afecta la evaluación; se corrige el Día 8.
 - Falso "no sé" (con grounding se negó aunque las tools tenían el dato): 0 casos en G13, G17, G10 y G18.
 - Filtro o tool equivocada con grounding (cifra con procedencia válida pero incorrecta, límite L1): ______
 - Invención sin grounding distinta del caso estrella (candidato de respaldo para el video): ______
@@ -70,7 +71,10 @@ Registrar aquí, sin corregir nada (el ajuste del verificador es el Día 6):
 
 | Archivo | Qué muestra |
 |---|---|
-| `dia2_comparacion_costo_agosto.png` | Caso estrella: sin grounding NO_VERIFICADA vs con grounding VERIFICADA y fuente visible |
-| `dia2_comparacion_respaldos.png` | G10: lista de recursos verificada por la capa 1 |
-| `dia2_rechazo_contrasena.png` | G31: RECHAZO sin llamada al modelo |
+| `dia2_ollama_g13.png` | G13 con Ollama: sin grounding se niega (SIN_CIFRAS), con grounding 87,292.74 VERIFICADA |
+| `dia2_ollama_g17.png` | G17: STF-BIA-DEV-GPU-001 y 2,976.00 respaldados |
+| `dia2_ollama_g10.png` | G10: lista de recursos verificada por la capa 1 |
+| `dia2_ollama_g18.png` | G18: $310.25 respaldado frente a 310.24 esperado (pendiente de fuentes) |
+| `dia2_rechazo_g31.png` | G31: RECHAZO del prefiltro, 0 tokens, sin llamada al modelo |
 | `dia2_gemini_503.png` | Gemini 503: error explícito, sin respuesta fabricada (LIMITES O1) |
+| `diagnostico_http_gemini.txt` | Respuesta HTTP cruda de Google (origen del 503/429) |
