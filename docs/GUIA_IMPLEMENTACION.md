@@ -77,7 +77,7 @@ Sin grounding tarda más porque el modelo escribe una respuesta larga. Con groun
 ### 1.3 API key de Gemini (gratis)
 
 1. Entra a https://aistudio.google.com/apikey con tu cuenta de Google y crea una key.
-2. Revisa en AI Studio qué modelos tienes disponibles y los límites de la capa gratuita (solicitudes por minuto y por día). El valor por defecto es `gemini-2.5-flash`; si no aparece, cambia `GEMINI_MODEL`.
+2. Revisa en AI Studio los límites de la capa gratuita (solicitudes por minuto y por día). El modelo por defecto es **`gemini-3.5-flash`**, verificado el 22/09/2026: `gemini-2.5-flash` responde 404 ("no longer available to new users") y el alias `gemini-flash-latest` no conviene porque cambia de modelo con el tiempo y la evaluación dejaría de ser reproducible.
 3. Guarda la key **solo** en `.env` (paso 1.4). Nunca en el código, en capturas ni en el video.
 
 ### 1.4 Proyecto local
@@ -356,7 +356,8 @@ gh release create v1.0 --title "Entrega final · Opción 02" --notes "Proyecto f
 | `ErrorProveedor: No se pudo conectar con Ollama` | Ollama no está corriendo | Abre la app de Ollama o ejecuta `ollama serve` |
 | Timeout con Ollama | Consulta con grounding larga | `TIMEOUT_PROVEEDOR_S=300`; si se repite, usa Gemini para esa corrida |
 | Gemini responde 429 | Límite por minuto de la capa gratuita | Sube `--pausa`; el adaptador reintenta con espera |
-| Gemini devuelve 404 | Nombre de modelo no disponible | Revisa los modelos en AI Studio y ajusta `GEMINI_MODEL` |
+| Gemini devuelve 404 | Modelo retirado para cuentas nuevas | Lista los modelos disponibles para tu key y usa uno `flash` estable (sin `preview`); hoy, `GEMINI_MODEL=gemini-3.5-flash` |
+| Gemini devuelve 503 | Saturación temporal del modelo | Reintenta en unos minutos; en la evaluación, sube `--pausa` |
 | Gemini devuelve texto vacío | Los tokens de razonamiento consumen `max_tokens` | `RESPUESTA_MAX_TOKENS=1500` y documenta el cambio |
 | La interfaz muestra "simulado (sin key)" | Falta la key en `.env` o el servidor no se reinició | Revisa `.env` y reinicia `uvicorn` |
 | PowerShell no deja activar `.venv` | Política de ejecución | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |

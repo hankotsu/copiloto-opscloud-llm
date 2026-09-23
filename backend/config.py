@@ -34,7 +34,7 @@ class Config:
     ollama_num_ctx: int = int(os.getenv("OLLAMA_NUM_CTX", "16384"))
     ollama_keep_alive: str = os.getenv("OLLAMA_KEEP_ALIVE", "30m")  # mantiene el modelo cargado entre consultas
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     gemini_base_url: str = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
