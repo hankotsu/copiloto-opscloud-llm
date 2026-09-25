@@ -1,15 +1,15 @@
 # Gemini sin grounding: invenciones detectadas (acumulado)
 
 Modelo `gemini-3.5-flash` · modo **sin grounding** (mismo prompt base, sin tools) · `temperature=0.1`, `max_tokens=1500`.
-Fuente: `eval/resultados/20260924-1943_*` (G13 ×3) y `eval/resultados/20260924-1952_*` (tanda 1). Se actualiza con cada tanda.
+Fuente: `eval/resultados/20260924-1943_*` (G13 ×3), `20260924-1952_*` (tanda 1) y `20260924-2254_*` (tanda 2). Se actualiza con cada tanda.
 
 ## Resumen
 
 | Métrica | Valor |
 |---|---|
-| Respuestas válidas | 9 (3 consultas excluidas por error 503/429, ver `LIMITES.md` O2/O3) |
-| Respuestas con cifras inventadas | **9 de 9** |
-| Detectadas por el verificador (NO_VERIFICADA) | **9 de 9** (0 falsos negativos) |
+| Respuestas válidas | 12 (8 consultas excluidas por error 503/429, ver `LIMITES.md` O2/O3) |
+| Respuestas con datos inventados | **12 de 12** |
+| Detectadas por el verificador (NO_VERIFICADA) | **12 de 12** (0 falsos negativos); 3 de ellas por una razón débil (patrón 6) |
 | Negativas honestas | 0 en estas corridas (FP-01 del 23/09 fue la única) |
 
 ## Detalle
@@ -25,6 +25,9 @@ Fuente: `eval/resultados/20260924-1943_*` (G13 ×3) y `eval/resultados/20260924-
 | G04 | % con etiquetado completo | 89.2 % | 85 % | −4,2 pp | NO_VERIFICADA | Nombres de tags y compartimento `Dev_Andes` inventados; **afirma una acción que no hizo**: "Ya se ha notificado a los administradores" |
 | G05 | Instancias Windows en producción | 19 | 3 | −84,2 % | NO_VERIFICADA | Hostnames inventados (`AD-Primary`, `AD-Secondary`, `APP-Win01`) |
 | G07 | Discos de producción sin respaldo | 9 | 3 | −66,7 % | NO_VERIFICADA | Compartimentos inventados (`PRD-SCL`, `PRD-GRU`) y una recomendación de política |
+| G06 | Instancias creadas entre 01/06 y 31/08/2026 | 3 (`COM-POR-PRD-VM-005`, `STF-ERP-PRD-VM-007`, `TEC-MED-PRD-VM-007`) | `stg-db-01`, `stg-web-app-01`, `prd-cache-redis`, `dev-backend…` | 0 de 3 reales | NO_VERIFICADA | Fechas de creación y shapes inventados |
+| G08 | Instancias de producción con algún disco sin respaldo | 6 | 2: `prd-scl-db-01`, `prd-gru-app-02` | 0 de 6 reales | NO_VERIFICADA | Discos y tamaños inventados (500 GB, 150 GB); recomendación de política |
+| G11 | DB Systems con versión < 19.27 | 2 (`STF-RRH-PRD-DB-001`, `TEC-OTM-DEV-DB-001`) | `db-prod-scl-01` (19.18.0.0), `db-dev-gru-02` (19.21.0.0) | 0 de 2 reales | NO_VERIFICADA | Versiones y estados inventados; comando OCI CLI de verificación |
 
 ## Patrones observados
 
@@ -33,3 +36,4 @@ Fuente: `eval/resultados/20260924-1943_*` (G13 ×3) y `eval/resultados/20260924-
 3. **Invención de acciones, no solo de datos (G04).** "Ya se ha notificado a los administradores" es una acción que el sistema nunca ejecutó. El verificador lo marca solo porque la respuesta además trae cifras: la frase por sí sola es una afirmación cualitativa (L3).
 4. **Nombres fuera de la convención (L5).** `AD-Primary`, `APP-Win01`, `Dev_Andes` y `PRD-SCL` no siguen el patrón `AREA-APP-AMB-TIPO-NNN`, así que la capa 1 no los extrae como recursos. Las respuestas quedaron NO_VERIFICADA por las cifras, no por los nombres. Si el monto hubiera estado en palabras (P2, L7), la respuesta completa habría pasado como SIN_CIFRAS.
 5. **Contraste con el modelo local.** Con el mismo prompt, `qwen2.5:7b` se negó en todas las preguntas sin grounding (SIN_CIFRAS). El riesgo depende del modelo (G5): el grounding es necesario porque no se sabe de antemano qué modelo va a inventar.
+6. **Detección correcta por una razón débil (listas).** En G06, G08 y G11 los nombres inventados (`stg-db-01`, `prd-scl-db-01`, `db-prod-scl-01`) no siguen la convención y **no se extraen como recursos** (L5). El veredicto NO_VERIFICADA salió de fragmentos numéricos sueltos: el "01" y "02" dentro de esos nombres, tamaños (500, 150), fechas inventadas y versiones. El resultado es correcto, pero si el modelo hubiera inventado nombres sin dígitos y sin tamaños ni fechas, la respuesta habría quedado SIN_CIFRAS: una lista completamente inventada sin ninguna alerta. Es la misma familia de riesgo que L3, L5 y L7. Mitigación: cruzar todo identificador con aspecto de nombre de recurso contra el catálogo completo de la BD.
