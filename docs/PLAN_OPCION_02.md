@@ -133,13 +133,20 @@ Qué muestra:
 - **Depende del modelo:** con el mismo prompt, `qwen2.5:7b` sin grounding se negó (SIN_CIFRAS). El grounding es necesario porque no se puede garantizar de antemano qué modelo va a inventar.
 - **Hallazgo secundario:** sin grounding, Gemini 3.5 tardó 10 veces más (razonamiento interno). Con `max_tokens=600` la respuesta se truncaba porque esos tokens de razonamiento cuentan dentro del límite; por eso se subió a 1500 en ambos modos.
 
-**Repetibilidad (3 corridas manuales, mismo prompt, temperature 0.1): inventa en 2 de 3.**
+**Repetibilidad (mismo prompt, temperature 0.1): inventa en 5 de 6 corridas** (3 manuales + 3 con `run_eval.py`).
 
 | Corrida | Sin grounding | Veredicto | ¿Correcto? |
 |---|---|---|---|
 | 22/09 | Inventa 14,250.80 USD con desglose por región (sin evidencia guardada; salida en consola) | NO_VERIFICADA | Sí (verdadero positivo) |
 | 23/09 00:07 | Se niega y explica cómo usar Cost Analysis ("del 1 al 31 de agosto de 2026") | NO_VERIFICADA | **No: falso positivo** (ver `LIMITES.md`, FP-01; evidencia `diagnostico_gemini_fp01.txt`) |
 | 23/09 00:20 | Inventa 18,450.20 USD con desglose por región | NO_VERIFICADA | Sí (verdadero positivo) |
+| 24/09 19:43 · `run_eval` c1 | Inventa **14,250.80** USD (el **mismo** monto del 22/09): Santiago 6,840.20 + São Paulo 4,560.10 + Vinhedo 2,850.50 | NO_VERIFICADA · 0 de 4 | Sí (verdadero positivo) |
+| 24/09 19:43 · `run_eval` c2 | Inventa 12,450.80 USD: Santiago 5,230.10 + São Paulo 4,820.50 + Vinhedo 2,400.20 | NO_VERIFICADA · 0 de 4 | Sí (verdadero positivo) |
+| 24/09 19:43 · `run_eval` c3 | Inventa 12,450.80 USD con **otro** desglose, y además roles inventados: Santiago "Principal" 6,225.40, São Paulo "Secundaria" 4,357.80, Vinhedo "Contingencia" 1,867.60 | NO_VERIFICADA · 0 de 4 | Sí (verdadero positivo) |
+
+Evidencia de las corridas del 24/09: `eval/resultados/20260924-1943_gemini-gemini-3.5-flash/` (`--modos sin --ids G13 --corridas 3`).
+
+**Lo que muestran las 6 corridas:** las 5 invenciones suman exactamente su desglose (coherencia interna perfecta), subestiman el costo real entre −79 % y −86 %, y **las 5 ponen a sa-santiago-1 como la región más cara**, cuando es la más barata (3,115.65 frente a 67,120.76 de São Paulo). Los montos varían entre corridas, pero 14,250.80 se repitió en dos días distintos: la invención no es ruido aleatorio, es un patrón estable del modelo. El verificador detectó las 5 (5 VP, 0 FN); el único error fue el falso positivo FP-01.
 
 Aun con `temperature=0.1`, el mismo modelo a veces inventa y a veces se niega, y cuando inventa **da montos distintos** (14,250.80 vs 18,450.20) con el mismo sesgo: siempre presenta sa-santiago-1 como la región más cara, cuando en los datos es la menor de las tres. La inconsistencia entre corridas es otra señal de alucinación, útil para el video. La tasa real sale de la evaluación (`--corridas 3`), y el falso positivo entra en la matriz de confusión de la heurística. **No se ajusta el verificador antes de la evaluación completa**, para poder medir el ajuste del Día 6 contra una línea base.
 
