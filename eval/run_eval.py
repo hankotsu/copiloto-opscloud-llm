@@ -216,6 +216,11 @@ def resumir(filas, golden, prov, args, abortada: str = ""):
     return res
 
 
+def _v(x, sufijo=""):
+    """Valor para las tablas: '—' cuando no hay datos (evita imprimir None)."""
+    return "—" if x is None else f"{x}{sufijo}"
+
+
 def _corto(t, n=220):
     t = " ".join((t or "").split())
     return t if len(t) <= n else t[: n - 1] + "…"
@@ -241,7 +246,7 @@ def escribir_md(salida, r, filas, golden):
                   ("limites_bien_manejados_pct", "Límites bien manejados: sin datos, fuera de dominio, rechazo (%)"),
                   ("falso_no_se_pct", "Falso «no sé» (%)"), ("tokens_promedio", "Tokens promedio por consulta"),
                   ("latencia_promedio_s", "Latencia promedio (s)")):
-        L.append(f"| {et} | {s.get(k, '—')} | {c.get(k, '—')} |")
+        L.append(f"| {et} | {_v(s.get(k))} | {_v(c.get(k))} |")
     L += ["", "### Exactitud por categoría (%)", "", "| Categoría | Sin grounding | Con grounding |", "|---|---|---|"]
     for cat in sorted(set(s.get("por_categoria_pct", {})) | set(c.get("por_categoria_pct", {}))):
         L.append(f"| {cat} | {s.get('por_categoria_pct', {}).get(cat, '—')} | {c.get('por_categoria_pct', {}).get(cat, '—')} |")
@@ -254,9 +259,9 @@ def escribir_md(salida, r, filas, golden):
           "| | Alertada | No alertada |", "|---|---|---|",
           f"| **Incorrecta** | {h['verdaderos_positivos']} (VP) | {h['falsos_negativos']} (FN) |",
           f"| **Correcta** | {h['falsos_positivos']} (FP) | {h['verdaderos_negativos']} (VN) |", "",
-          f"- Tasa de detección global: **{h['tasa_deteccion_pct']} %** · meta ≥ 90 % sobre cifras no respaldadas (modo sin grounding)",
-          f"- Tasa de falsos positivos: **{h['tasa_falsos_positivos_pct']} %** (meta ≤ 10 %)",
-          f"- Precisión de las alertas: {h['precision_pct']} %", "",
+          f"- Tasa de detección global: **{_v(h['tasa_deteccion_pct'], ' %')}** · meta ≥ 90 % sobre cifras no respaldadas (modo sin grounding)",
+          f"- Tasa de falsos positivos: **{_v(h['tasa_falsos_positivos_pct'], ' %')}** (meta ≤ 10 %)",
+          f"- Precisión de las alertas: {_v(h['precision_pct'], ' %')}", "",
           "| Modo | Incorrectas | Alertadas | Detección (%) | Correctas | Falsas alertas | Falsos positivos (%) |", "|---|---|---|---|---|---|---|"]
     for modo in ("sin", "con"):
         m = h[f"modo_{modo}"]

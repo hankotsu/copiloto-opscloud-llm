@@ -86,6 +86,7 @@ def test_corrida_se_detiene_tras_errores_seguidos(tmp_path, monkeypatch):
     assert resumen["errores_proveedor"]["total"] == 3 and resumen["abortada"]
     md = (salida / "RESUMEN.md").read_text(encoding="utf-8")
     assert "excluidas por error del proveedor" in md and "⛔" in md
+    assert "None" not in md                          # sin datos se muestra como "—"
     assert "ERROR" in (salida / "PARES.md").read_text(encoding="utf-8")
 
 
