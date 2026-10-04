@@ -1,0 +1,26 @@
+Diagnóstico HTTP directo de Gemini · 2026-09-25 12:59:05 -0500
+Modelo: gemini-3.5-flash · endpoint: https://generativelanguage.googleapis.com/v1beta
+
+── 1. GET /models ─────────────────────────────
+HTTP 200
+  modelos visibles para la key: 61
+  models/gemini-3.5-flash disponible: sí
+
+── 2. POST /openai/chat/completions (1 llamada) ─
+HTTP 503 · 1.1 s
+  error.code: 503
+  error.status: UNAVAILABLE
+  error.message: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+  cuerpo crudo (recortado):
+[
+ {
+  "error": {
+   "code": 503,
+   "message": "This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+   "status": "UNAVAILABLE"
+  }
+ }
+]
+
+── Interpretación ──────────────────────────────
+Key válida y modelo disponible; el 503 lo emite Google (servicio saturado). No es un fallo del sistema ni de la configuración.

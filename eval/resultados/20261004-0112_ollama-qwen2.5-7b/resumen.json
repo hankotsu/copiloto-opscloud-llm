@@ -1,0 +1,113 @@
+{
+  "proveedor": "ollama",
+  "modelo": "qwen2.5:7b",
+  "modo_simulado": false,
+  "fecha": "2026-10-04 01:42",
+  "corridas": 1,
+  "preguntas": 32,
+  "parametros": {
+    "temperature": 0.1,
+    "max_tokens": 1500,
+    "max_iteraciones": 5,
+    "num_ctx_ollama": 8192
+  },
+  "por_modo": {
+    "sin": {
+      "consultas_validas": 32,
+      "errores_proveedor": 0,
+      "exactitud_pct_media": 6.2,
+      "exactitud_pct_desv": 0.0,
+      "exactitud_por_corrida": [
+        6.2
+      ],
+      "exactitud_respondibles_pct": 3.4,
+      "limites_bien_manejados_pct": 33.3,
+      "falso_no_se_pct": 0.0,
+      "por_categoria_pct": {
+        "cruzada": 0.0,
+        "finops": 0.0,
+        "fuera_dominio": 0.0,
+        "inventario": 0.0,
+        "rechazo": 100.0,
+        "respaldos": 0.0,
+        "seguridad": 0.0,
+        "sin_datos": 50.0
+      },
+      "tokens_promedio": 221,
+      "latencia_promedio_s": 18.32,
+      "veredictos": {
+        "VERIFICADA": 0,
+        "PARCIAL": 0,
+        "NO_VERIFICADA": 6,
+        "SIN_CIFRAS": 26
+      }
+    },
+    "con": {
+      "consultas_validas": 32,
+      "errores_proveedor": 0,
+      "exactitud_pct_media": 71.9,
+      "exactitud_pct_desv": 0.0,
+      "exactitud_por_corrida": [
+        71.9
+      ],
+      "exactitud_respondibles_pct": 69.0,
+      "limites_bien_manejados_pct": 100.0,
+      "falso_no_se_pct": 13.8,
+      "por_categoria_pct": {
+        "cruzada": 50.0,
+        "finops": 80.0,
+        "fuera_dominio": 100.0,
+        "inventario": 66.7,
+        "rechazo": 100.0,
+        "respaldos": 50.0,
+        "seguridad": 100.0,
+        "sin_datos": 50.0
+      },
+      "tokens_promedio": 3896,
+      "latencia_promedio_s": 36.08,
+      "veredictos": {
+        "VERIFICADA": 28,
+        "PARCIAL": 0,
+        "NO_VERIFICADA": 0,
+        "SIN_CIFRAS": 4
+      }
+    }
+  },
+  "abortada": "",
+  "errores_proveedor": {
+    "total": 0,
+    "sin": 0,
+    "con": 0,
+    "inyeccion": 0
+  },
+  "heuristica": {
+    "verdaderos_positivos": 6,
+    "falsos_negativos": 5,
+    "falsos_positivos": 0,
+    "verdaderos_negativos": 20,
+    "tasa_deteccion_pct": 54.5,
+    "tasa_falsos_positivos_pct": 0.0,
+    "precision_pct": 100.0,
+    "modo_sin": {
+      "incorrectas": 6,
+      "incorrectas_alertadas": 6,
+      "correctas": 0,
+      "correctas_alertadas": 0,
+      "tasa_deteccion_pct": 100.0,
+      "tasa_falsos_positivos_pct": null
+    },
+    "modo_con": {
+      "incorrectas": 5,
+      "incorrectas_alertadas": 0,
+      "correctas": 20,
+      "correctas_alertadas": 0,
+      "tasa_deteccion_pct": 0.0,
+      "tasa_falsos_positivos_pct": 0.0
+    }
+  },
+  "inyeccion": {
+    "casos": 3,
+    "neutralizados": 2,
+    "errores_proveedor": 0
+  }
+}
