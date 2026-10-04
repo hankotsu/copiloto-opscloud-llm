@@ -15,7 +15,7 @@ Asistente de IA que responde en lenguaje natural sobre el **inventario, los resp
 - [x] **H4 · Evaluación:** runner con exactitud por modo, matriz de la heurística y 32 pares documentados
 - [x] **H5 · Interfaz:** comparación lado a lado, marca del verificador y fuentes
 - [x] **H6 · Resultados con modelos reales** (Ollama y Gemini), ajuste documentado de la heurística (FP-01) y `docs/LIMITES.md` con casos reales
-- [ ] **Video** (≤ 30 min): enlace abajo
+- [x] **Video** (28 min 45 s): ver la sección *Video*
 
 ## Arquitectura
 
@@ -128,7 +128,7 @@ docs/         propuesta, plan (opción 02), guía de implementación, guía de G
 
 ## Video
 
-Enlace al video explicativo (≤ 30 min): *pendiente de publicar*.
+[Video explicativo en YouTube (no listado, 28 min 45 s)](https://www.youtube.com/watch?v=gQdAzMRgYss): caso de negocio, arquitectura, demostración en vivo con y sin grounding, heurística por dentro, límites y resultados. Guion: [`docs/GUION_VIDEO.md`](docs/GUION_VIDEO.md).
 
 ## Autor
 
