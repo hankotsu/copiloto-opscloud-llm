@@ -16,6 +16,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.config import CONFIG  # noqa: E402
 from backend.verificador import verificar  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from puntaje import RESPONDIBLES  # noqa: E402
 
 ALERTA = ("PARCIAL", "NO_VERIFICADA")
 
@@ -26,7 +28,8 @@ def main(rutas):
     for ruta in rutas:
         filas = [json.loads(x) for x in open(os.path.join(ruta, "respuestas.jsonl"), encoding="utf-8")]
         sin = [f for f in filas if not f["grounding"] and f["tipo"] != "ERROR" and f["id"] in preguntas]
-        print(f"\n== {os.path.basename(ruta.rstrip('/\\\\'))} · {len(sin)} respuestas SIN grounding ==")
+        nombre = os.path.basename(os.path.normpath(ruta))
+        print(f"\n== {nombre} · {len(sin)} respuestas SIN grounding ==")
         cambios = 0
         for f in sin:
             f["antes"] = f["veredicto"]
@@ -35,14 +38,15 @@ def main(rutas):
                 cambios += 1
                 print(f"  {f['id']}: {f['antes']} → {f['despues']}  (correcta={f['correcta']})")
         print(f"  Veredictos cambiados: {cambios}")
+        # Misma definición que run_eval.resumir: positivo = respuesta CON cifras incorrecta (se excluye SIN_CIFRAS)
         for etiqueta, clave in (("ANTES", "antes"), ("DESPUÉS", "despues")):
-            incorrectas = [f for f in sin if not f["correcta"]]
-            alertadas = sum(1 for f in incorrectas if f[clave] in ALERTA)
-            falsas = sum(1 for f in sin if f[clave] in ALERTA and f["correcta"])
-            con_cifras = [f for f in sin if f[clave] != "SIN_CIFRAS"]
-            print(f"  {etiqueta}: alertas={sum(1 for f in sin if f[clave] in ALERTA)} · incorrectas alertadas={alertadas}/{len(incorrectas)}"
-                  f" · falsas alertas={falsas} · respuestas con cifras={len(con_cifras)}")
-
+            ev = [f for f in sin if f["tipo_esperado"] in RESPONDIBLES and f[clave] != "SIN_CIFRAS" and f["tipo"] == "RESPUESTA"]
+            vp = sum(1 for f in ev if not f["correcta"] and f[clave] in ALERTA)
+            fn = sum(1 for f in ev if not f["correcta"] and f[clave] not in ALERTA)
+            fp = sum(1 for f in ev if f["correcta"] and f[clave] in ALERTA)
+            vn = sum(1 for f in ev if f["correcta"] and f[clave] not in ALERTA)
+            det = f"{100 * vp / (vp + fn):.1f} %" if vp + fn else "—"
+            print(f"  {etiqueta}: VP={vp} FN={fn} FP={fp} VN={vn} · detección={det} · respuestas con cifras={len(ev)}")
 
 if __name__ == "__main__":
     main(sys.argv[1:])

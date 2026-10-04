@@ -14,7 +14,8 @@ Asistente de IA que responde en lenguaje natural sobre el **inventario, los resp
 - [x] **H3 · Heurística:** verificador de procedencia (capas 1, 1b, 2 y 3) + casos adversariales A1–A8
 - [x] **H4 · Evaluación:** runner con exactitud por modo, matriz de la heurística y 32 pares documentados
 - [x] **H5 · Interfaz:** comparación lado a lado, marca del verificador y fuentes
-- [ ] **H6 · Resultados con modelos reales**, `docs/LIMITES.md` completo y video
+- [x] **H6 · Resultados con modelos reales** (Ollama y Gemini), ajuste documentado de la heurística (FP-01) y `docs/LIMITES.md` con casos reales
+- [ ] **Video** (≤ 30 min): enlace abajo
 
 ## Arquitectura
 
@@ -51,7 +52,7 @@ pip install -r requirements-dev.txt
 cp .env.example .env                           # Windows: copy .env.example .env
 
 python data_gen/generar_dataset_sintetico.py   # crea data/ en ~2 s
-pytest -q                                      # 36 tests: dataset, tools, verificador, orquestador y API
+pytest -q                                      # 48 tests: dataset, tools, verificador, orquestador, evaluación y API
 
 ollama pull qwen2.5:7b                         # o el modelo que elija (ver docs/GUIA_IMPLEMENTACION.md)
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
@@ -63,11 +64,38 @@ Sin Ollama ni API keys, elija el proveedor **simulado** en la interfaz: funciona
 ### Evaluación
 
 ```bash
-python eval/run_eval.py --proveedor ollama --corridas 3
-python eval/run_eval.py --proveedor gemini --corridas 3 --pausa 7
+python eval/run_eval.py --proveedor ollama --corridas 1 --modos sin,con     # línea base publicada (≈ 30 min)
+python eval/run_eval.py --proveedor gemini --modos sin --pausa 10            # solo sin grounding: cuota gratuita de 20 consultas/día
+python eval/reverificar.py eval/resultados/<corrida>                          # medir un ajuste del verificador, sin llamar a ningún modelo
 ```
 
+Los errores del proveedor (429, 503) se registran como `ERROR`, se excluyen de las métricas y detienen la corrida tras 3 seguidos.
+
 Los resultados (`RESUMEN.md`, `PARES.md`, `respuestas.jsonl`) quedan en `eval/resultados/<fecha>_<proveedor>_<modelo>/` y se versionan como evidencia.
+
+## Resultados
+
+Mismas 32 preguntas del golden set, mismo modelo, `temperature=0.1`, `max_tokens=1500`; solo cambian las tools y las reglas de grounding. Evidencia: [`eval/resultados/`](eval/resultados/) y [`docs/evidencias/linea_base_ollama_04-10.md`](docs/evidencias/linea_base_ollama_04-10.md).
+
+**qwen2.5:7b local (Ollama), 04/10/2026, 1 corrida de 32 preguntas:**
+
+| Métrica | Sin grounding | Con grounding |
+|---|---|---|
+| Exactitud total | 6,2 % | **71,9 %** |
+| Límites bien manejados (sin datos, fuera de dominio, rechazo) | 33,3 % | 100 % |
+| Falso «no sé» | 0 % | 13,8 % |
+| Tokens / latencia por consulta | 221 / 18 s | 3 896 / 36 s |
+
+**Heurística anti-alucinación (verificador de procedencia):**
+- Sin grounding: detecta **6 de 6** respuestas con cifras inventadas y 0 falsos positivos (metas: ≥ 90 % y ≤ 10 %).
+- Con grounding: **5 falsos negativos** (G02, G03, G07, G08, G14). El modelo consultó la tool con filtros equivocados, la cifra tiene procedencia válida y aun así es incorrecta: el verificador comprueba procedencia, no pertinencia (L1).
+- Gemini `gemini-3.5-flash` sin grounding, lote del 04/10 (15 preguntas): 11 respuestas con cifras inventadas, **todas alertadas**. Un modelo sin acceso a los datos fabrica tenancies enteros, coherentes y creíbles.
+
+**Caso estrella** (*«¿Cuál fue el costo total del tenancy en agosto de 2026?»*, valor real **87 292,74 USD**): con grounding, 87 292,74 y VERIFICADA con la fuente visible; sin grounding, Gemini inventó montos distintos con desglose por región plausible (p. ej. 14 250,80 USD) en la mayoría de las corridas, y el verificador los marcó NO VERIFICADA. Registro: [`docs/PLAN_OPCION_02.md`](docs/PLAN_OPCION_02.md) §7 y [`docs/evidencias/gemini_sin_grounding.md`](docs/evidencias/gemini_sin_grounding.md).
+
+**Ajuste documentado (Día 6, medido antes y después):** una negativa honesta que decía «configura el rango del 1 al 31 de agosto de 2026» quedaba NO VERIFICADA (falso positivo FP-01). El verificador ahora reconoce el rango de días y trata los extremos del mes preguntado como «del usuario»; el caso pasa a SIN_CIFRAS, en las respuestas guardadas cambia un solo veredicto y la detección no baja. Detalle: [`docs/evidencias/dia6_ajuste_fp01.md`](docs/evidencias/dia6_ajuste_fp01.md).
+
+**Límites conocidos** (todos con caso reproducible en [`docs/LIMITES.md`](docs/LIMITES.md)): procedencia no es pertinencia (L1), afirmaciones sin cifras (L3), nombres fuera de la convención (L5), montos escritos en palabras (L7), regiones y atributos sin verificar, p. ej. «todos en sa-saopaulo-1» cuando un volumen está en Frankfurt (L8, FN-01), y el comportamiento no determinista de los modelos. Con una sola corrida no se estima la variación entre corridas; las 3 corridas del plan quedan como trabajo pendiente. La cuota gratuita de Gemini (20 consultas diarias) limitó su uso a las preguntas sin grounding.
 
 ## Datos
 
@@ -93,14 +121,14 @@ backend/      API FastAPI: recuperación (tools), generación (orquestador) y he
 frontend/     interfaz web de una sola página, servida por la API
 eval/         runner de evaluación, puntaje y resultados versionados
 data_gen/     generador del dataset sintético y su documentación
-tests/        36 tests: dataset, tools, verificador (casos A1–A8), orquestador, adaptadores y API
+tests/        48 tests: dataset, tools, verificador (casos A1–A8 y P1–P4), orquestador, evaluación, adaptadores y API
 scripts/      guardia de confidencialidad (pre-commit y CI)
 docs/         propuesta, plan (opción 02), guía de implementación, guía de GitHub, límites y ética
 ```
 
 ## Video
 
-Enlace al video explicativo (≤ 30 min): *pendiente*.
+Enlace al video explicativo (≤ 30 min): *pendiente de publicar*.
 
 ## Autor
 
