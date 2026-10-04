@@ -18,6 +18,7 @@ Veredictos: VERIFICADA · PARCIAL · NO_VERIFICADA · SIN_CIFRAS
 """
 from __future__ import annotations
 
+import calendar
 import itertools
 import json
 import re
@@ -40,6 +41,8 @@ RE_RUIDO = re.compile(
 RE_FECHA_ISO = re.compile(r"\b(\d{4})-(\d{2})(?:-(\d{2}))?\b")
 RE_FECHA_DMY = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 RE_FECHA_TXT = re.compile(r"\b(?:(\d{1,2}) de )?(" + "|".join(MESES) + r")(?: (?:de|del) )?(\d{4})?\b", re.I)
+# Rango de días dentro de un mes: "del 1 al 31 de agosto de 2026" (Día 6, ajuste de FP-01/L6)
+RE_RANGO_DIAS = re.compile(r"\b(\d{1,2}) (?:al|a|y) (\d{1,2}) de (" + "|".join(MESES) + r")(?: (?:de|del) (\d{4}))?\b", re.I)
 RE_LISTA = re.compile(r"(?m)^\s*(?:[-*•]|\d{1,2}[.)])\s+")
 RE_NUM = re.compile(
     r"(?<![\w/])(?:USD|US\$|\$)?\s?(\d{1,3}(?:[.,  ]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)"
@@ -167,10 +170,30 @@ def _fechas(texto: str) -> tuple[list[tuple[str, str]], str]:
             encontradas.append((m.group(0), f"{a}-{mes:02d}" + (f"-{int(d):02d}" if d else "")))
         return " ⟦F⟧ "
 
+    def rango(m):
+        d1, d2, mes, a = m.group(1), m.group(2), MESES[m.group(3).lower()], m.group(4)
+        pref = f"{a}-{mes:02d}" if a else f"-{mes:02d}"
+        for d in (d1, d2):
+            encontradas.append((m.group(0), f"{pref}-{int(d):02d}"))
+        return " ⟦F⟧ "
+
     texto = RE_FECHA_ISO.sub(iso, texto)
     texto = RE_FECHA_DMY.sub(dmy, texto)
+    texto = RE_RANGO_DIAS.sub(rango, texto)
     texto = RE_FECHA_TXT.sub(txt, texto)
     return encontradas, texto
+
+
+def _fechas_de_la_pregunta(pregunta: str) -> set[str]:
+    """Fechas que el usuario puso en la pregunta + los extremos (primer y último día) de cada mes que nombró.
+    Un mes nombrado delimita su rango: repetirlo no es una afirmación nueva. No se aceptan días intermedios."""
+    fechas = {f for _, f in _fechas(pregunta)[0]}
+    for f in list(fechas):
+        m = re.fullmatch(r"(\d{4})-(\d{2})", f)
+        if m:
+            ultimo = calendar.monthrange(int(m.group(1)), int(m.group(2)))[1]
+            fechas |= {f"{f}-01", f"{f}-{ultimo:02d}"}
+    return fechas
 
 
 # ─────────────────────────────── verificación
@@ -183,7 +206,7 @@ def verificar(respuesta: str, resultados_tools: list[dict], pregunta: str = "", 
     usuario = []
     for n in extraer_numeros(RE_RUIDO.sub(" ", _fechas(pregunta)[1])):
         usuario.extend(v for v, _ in n["cands"])
-    fechas_usuario = {f for _, f in _fechas(pregunta)[0]}
+    fechas_usuario = _fechas_de_la_pregunta(pregunta)
 
     texto = respuesta.replace("**", "").replace("`", "")
     texto = RE_LISTA.sub("", texto)

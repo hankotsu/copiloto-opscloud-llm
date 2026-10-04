@@ -145,13 +145,29 @@ def test_P3_LIMITACION_cifra_real_del_mes_equivocado():
     assert r.veredicto == "VERIFICADA", r.a_dict()
 
 
-def test_P4_FALSO_POSITIVO_FP01_rango_derivado_de_la_pregunta():
+def test_P4_FP01_corregido_rango_derivado_de_la_pregunta():
     # Caso real (gemini-3.5-flash sin grounding, 23/09 00:07): negativa honesta que indica cómo consultar el rango.
-    # Hoy queda NO_VERIFICADA por "1" y "31 de agosto de 2026" (L6). Es la línea base del ajuste del Día 6:
-    # si el ajuste funciona, este test debe cambiar a SIN_CIFRAS (medir antes y después).
+    # ANTES del ajuste del Día 6 (04/10): NO_VERIFICADA por "1" y "31 de agosto de 2026" (L6/FP-01).
+    # DESPUÉS: el rango "del 1 al 31 de agosto de 2026" se reconoce como fechas y los extremos del mes nombrado
+    # en la pregunta cuentan como "del usuario" → SIN_CIFRAS.
     t = ("No tengo acceso directo a los reportes de facturación en tiempo real o de fechas futuras (agosto de 2026) desde "
          "este canal. Para obtener el costo total exacto, en la consola de OCI selecciona Cost Analysis y configura el "
          "rango de fechas del **1 al 31 de agosto de 2026**.")
     r = verificar(t, [], "¿Cuál fue el costo total del tenancy en agosto de 2026?")
+    assert r.veredicto == "SIN_CIFRAS", r.a_dict()
+    assert not [a for a in r.afirmaciones if a.estado == "no_respaldada"]
+
+
+def test_FP01_ajuste_no_ampara_dias_intermedios_ni_otros_meses():
+    # El ajuste solo perdona los extremos del mes nombrado: inventar otras fechas sigue alertando.
+    q = "¿Cuál fue el costo total del tenancy en agosto de 2026?"
+    r = verificar("El pico fue el 15 de agosto de 2026.", [], q)
     assert r.veredicto == "NO_VERIFICADA", r.a_dict()
-    assert {a.texto for a in r.afirmaciones if a.estado == "no_respaldada"} == {"1", "31 de agosto de 2026"}
+    r = verificar("Configura el rango del 1 al 30 de septiembre de 2026.", [], q)
+    assert r.veredicto == "NO_VERIFICADA", r.a_dict()
+
+
+def test_FP01_ajuste_no_oculta_cifras_inventadas_junto_al_rango():
+    q = "¿Cuál fue el costo total del tenancy en agosto de 2026?"
+    r = verificar("Del 1 al 31 de agosto de 2026 el costo total fue USD 64,380.00.", [], q)
+    assert r.veredicto == "NO_VERIFICADA" and any("64,380.00" in a.texto for a in r.afirmaciones if a.estado == "no_respaldada"), r.a_dict()

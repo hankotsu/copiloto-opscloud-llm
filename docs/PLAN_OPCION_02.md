@@ -69,7 +69,7 @@ La heurística de clase (`detectar_senales_alerta`) busca con regex porcentajes 
 | P1 | Real (FN-01): cifras correctas + "distribuidos en la región sa-saopaulo-1", con un volumen en eu-frankfurt-1 | **Lo engaña:** VERIFICADA | L8 |
 | P2 | La invención del caso estrella con el monto escrito en palabras ("dieciocho mil cuatrocientos cincuenta dólares") | **Lo engaña:** SIN_CIFRAS; con dígitos o "91 mil" sí da NO_VERIFICADA | L7 |
 | P3 | Total real de agosto atribuido a julio | **Lo engaña:** VERIFICADA (procedencia ≠ pertinencia) | L1 |
-| P4 | Real (FP-01): negativa honesta con "del 1 al 31 de agosto de 2026" | **Falso positivo:** NO_VERIFICADA. Línea base del ajuste del Día 6 | L6 |
+| P4 | Real (FP-01): negativa honesta con "del 1 al 31 de agosto de 2026" | **Antes (línea base):** falso positivo NO_VERIFICADA. **Después del ajuste del Día 6 (04/10):** SIN_CIFRAS | L6 |
 
 ---
 
